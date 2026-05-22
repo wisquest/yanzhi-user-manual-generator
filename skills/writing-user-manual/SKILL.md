@@ -457,6 +457,22 @@ Format:
 
 The table in the markdown file must include the same four columns (序号, 占位符位置, 截图描述, 文件名) so the user can track which screenshot files need to be created.
 
+### Screenshot Saving Instructions (Generate Mode)
+
+After outputting the screenshot table, always output the following instructions to the user in the terminal:
+
+```
+## 截图保存说明
+
+1. 在手册 Markdown 文件同级目录下创建 `screenshots/` 文件夹
+2. 按照截图清单中的「文件名」列，将截图保存为对应的 PNG 文件
+   - 文件名格式：`X-descriptive-name.png`（如 `1-login-page.png`）
+   - X 为截图序号，必须与占位符中的图号一致
+3. 确保 `screenshots/` 文件夹与手册 Markdown 文件在同一目录层级，Markdown 中的图片链接才能正常显示
+```
+
+This ensures the user knows exactly where to put screenshots and what to name them so the markdown image links resolve correctly.
+
 ---
 
 ## Common Mistakes

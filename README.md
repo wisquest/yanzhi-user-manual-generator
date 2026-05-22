@@ -30,23 +30,6 @@
 
 **触发关键词：** `用户手册`、`使用手册`、`用户指南`、`user manual`、`user guide`、`更新手册`
 
-### auto-capture
-
-自动为用户手册中的截图占位符捕获真实截图，通过交互式导航运行中的应用程序完成。
-
-采用**快照-分析-操作**循环——读取当前界面、判断点击目标、验证操作结果，而非盲目执行脚本。
-
-四种截图模式：
-
-| 模式 | 平台 | 技术方案 |
-|------|------|----------|
-| 浏览器模式 | Web 应用 | Playwright MCP |
-| Windows 原生模式 | WPF / WinForms | pywinauto |
-| macOS 原生模式 | Cocoa / AppKit | osascript (AppleScript) |
-| 引导式桌面模式 | Linux / 回退方案 | 逐步引导用户操作 |
-
-**触发关键词：** `自动截图`、`截图`、`填充截图`、`auto capture`、`take screenshots`
-
 ### generating-html-manual
 
 将 Markdown 用户手册转换为带样式的独立 HTML 页面，包含侧边栏导航和公司品牌标识。
@@ -66,8 +49,7 @@
 
 ```
 1. /writing-user-manual    →  生成带截图占位符的 Markdown 用户手册
-2. /auto-capture           →  自动导航应用，用真实截图填充占位符
-3. /generating-html-manual →  转换为精美的独立 HTML 页面
+2. /generating-html-manual →  转换为精美的独立 HTML 页面
 ```
 
 ## 许可证

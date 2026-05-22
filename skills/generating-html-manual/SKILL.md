@@ -86,6 +86,8 @@ Convert the markdown content to well-structured HTML following these rules:
 
 **Skip inline TOC sections:** If the markdown contains a "目录"、"Table of Contents"、"内容提要" or similar TOC section (a heading followed by a list of internal links), **omit it from the HTML body**. The sidebar already provides navigation — duplicating the TOC in the content area wastes space and confuses readers.
 
+**Skip screenshot index table:** If the markdown ends with a screenshot index table (a section titled "截图索引"、"截图索引表"、"Screenshot Index" or similar, containing a table that maps screenshot placeholders to file paths), **omit this entire section from the HTML output**. This table is a build-time reference for tracking which screenshots exist — it is not end-user content and does not belong in the published manual.
+
 **Heading ID slugs:** Generate from heading text — lowercase, replace spaces/special chars with hyphens, ensure uniqueness by appending `-2`, `-3` etc. for duplicates.
 
 **Media path rewrite:** All media references in the HTML must point to `media/` relative path.
@@ -233,3 +235,4 @@ Convert markdown blockquotes with specific markers to styled callouts:
 | Placeholder text above image | Place `【图X：...】` caption below image as `<figcaption>` |
 | Dark text on dark background | Use white/light text on any dark-colored element |
 | TOC section duplicated in body | Sidebar already shows TOC — omit "目录" sections from content |
+| Screenshot index table included in HTML | Omit "截图索引" section entirely — it's a build-time reference, not end-user content |

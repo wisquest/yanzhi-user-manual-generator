@@ -277,12 +277,64 @@ The manual title must include the version name extracted in Step 1:
 ### Required Sections (in order)
 
 1. **欢迎使用** — Version name, one paragraph: what is this system + 3 bullet points of key benefits
-2. **目录** — Markdown anchor links to all major sections
-3. **系统登录** — Login flow, error table, logout
-4. **系统首页概览** — Main navigation, role-based menu differences
-5. **Core Feature Sections** — Organized by **user operation flow**, one section per major flow
-6. **常见问题解答** — FAQ organized by category
-7. **快速上手清单** — 5-step checklist for first-time users
+2. **产品概述** — Brief product introduction + Mermaid operation flowchart (see Product Introduction section below)
+3. **目录** — Markdown anchor links to all major sections
+4. **系统登录** — Login flow, error table, logout
+5. **系统首页概览** — Main navigation, role-based menu differences
+6. **Core Feature Sections** — Organized by **user operation flow**, one section per major flow
+7. **常见问题解答** — FAQ organized by category
+8. **快速上手清单** — 5-step checklist for first-time users
+
+### Product Introduction (产品概述)
+
+This section gives readers a quick understanding of the product before diving into details. It must include:
+
+1. **One-paragraph introduction**: What the product is, who it's for, and what problem it solves
+2. **Key capabilities**: 3-5 bullet points listing core functions
+3. **Target users**: Brief mention of user roles (e.g., admin, operator, end user)
+4. **Operation flowchart**: A Mermaid diagram showing the end-to-end user journey through the product
+
+#### Product Introduction Template
+
+```markdown
+## 产品概述
+
+[Product Name] 是一款 [product category/purpose]，面向 [target users]，旨在 [core value proposition]。
+
+### 核心能力
+
+- **[Capability 1]**：[Brief description]
+- **[Capability 2]**：[Brief description]
+- **[Capability 3]**：[Brief description]
+
+### 目标用户
+
+[User Role A]：[What this role does in the system]
+[User Role B]：[What this role does in the system]
+
+### 产品使用流程
+
+以下流程图展示了 [Product Name] 的主要使用路径：
+
+​```mermaid
+flowchart TD
+    A[用户登录] --> B{角色判断}
+    B -->|管理员| C[系统管理]
+    B -->|操作员| D[日常操作]
+    C --> C1[用户管理]
+    C --> C2[系统配置]
+    D --> D1[核心业务流程A]
+    D --> D2[核心业务流程B]
+    D1 --> D1a[步骤1]
+    D1 --> D1b[步骤2]
+    D2 --> D2a[步骤1]
+    D2 --> D2b[步骤2]
+    D1b --> E[结果查看/导出]
+    D2b --> E
+​```
+```
+
+**Important**: The Mermaid flowchart must be derived from the actual project analysis. Each node should represent a meaningful user action or decision point, not a technical module. The flowchart should give readers a "map" of the entire product at a glance.
 
 ### Core Principle: Operation-Flow-First
 
@@ -416,6 +468,8 @@ Format:
 | No quick start guide | End with a 5-step checklist for first-time users |
 | Inconsistent UI naming | Always use the exact label from the spec/source code |
 | Not outputting screenshot modification table in update mode | Always output the table in terminal after writing the file |
+| Missing product overview section | Always include 产品概述 with introduction, capabilities, and Mermaid flowchart |
+| Mermaid flowchart uses technical terms | Use user-facing action names, not module/API names |
 
 ---
 
@@ -428,6 +482,7 @@ Format:
 
 ---
 ## 欢迎使用
+## 产品概述
 ## 目录
 ## 1. 系统登录
 ## 2. 系统首页概览

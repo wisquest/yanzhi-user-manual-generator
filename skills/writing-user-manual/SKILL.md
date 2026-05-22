@@ -47,7 +47,7 @@ digraph generate_flow {
   "User agrees?" [shape=diamond];
   "Generate manual with placeholders" [shape=box];
   "Generate manual without placeholders" [shape=box];
-  "Output screenshot table in terminal" [shape=box];
+  "Output screenshot table in terminal AND markdown" [shape=box];
   "Done" [shape=doublecircle];
 
   "Extract version name from source/spec" -> "Version found?";
@@ -59,9 +59,9 @@ digraph generate_flow {
   "Ask about screenshot placeholders" -> "User agrees?";
   "User agrees?" -> "Generate manual with placeholders" [label="yes"];
   "User agrees?" -> "Generate manual without placeholders" [label="no"];
-  "Generate manual with placeholders" -> "Output screenshot table in terminal";
+  "Generate manual with placeholders" -> "Output screenshot table in terminal AND markdown";
   "Generate manual without placeholders" -> "Done";
-  "Output screenshot table in terminal" -> "Done";
+  "Output screenshot table in terminal AND markdown" -> "Done";
 }
 ```
 
@@ -110,7 +110,7 @@ Ask the user using AskUserQuestion:
 >
 > 这样您后续可以按照描述自行创建截图并插入到指定位置。请问是否需要生成截图占位符？
 
-If user agrees -> include placeholders in the manual, then output screenshot table in terminal after writing the file.
+If user agrees -> include placeholders in the manual, then output screenshot table in both terminal and markdown file after writing.
 If user declines -> generate manual without placeholders.
 
 ### Step 4: Generate the Manual
@@ -366,6 +366,8 @@ Step-by-step instructions:
 
 【图X：Screenshot description if placeholders enabled】
 
+![图X](screenshots/X-descriptive-name.png)
+
 > **Tip/Note**: Helpful context in blockquote
 
 ### N.2 Another Sub-feature
@@ -406,15 +408,19 @@ Step-by-step instructions:
 
 ### Screenshot Placeholder Format
 
-When enabled, use this exact format:
+When enabled, use this exact format — each placeholder MUST be followed by a markdown image link pointing to `screenshots/` directory:
 
 ```
 【图X：[功能模块名称] - [界面状态描述]，展示[具体UI元素列表]】
+
+![图X](screenshots/X-name.png)
 ```
 
+The image filename uses the pattern `X-descriptive-name.png` where X is the figure number and the name is a short English slug describing the screenshot.
+
 Examples:
-- `【图1：登录页面全貌，展示系统Logo、用户名输入框、密码输入框、"登录"按钮的整体布局】`
-- `【图5：答题结束后统计面板，展示选项分布柱状图、正确率圆环图、学生答题列表】`
+- `【图1：登录页面全貌，展示系统Logo、用户名输入框、密码输入框、"登录"按钮的整体布局】` followed by `![图1](screenshots/1-login-page.png)`
+- `【图5：答题结束后统计面板，展示选项分布柱状图、正确率圆环图、学生答题列表】` followed by `![图5](screenshots/5-statistics-panel.png)`
 
 ### Screenshot Count Guidelines
 
@@ -435,19 +441,21 @@ Priority for screenshots:
 
 ### Screenshot Table Output (Generate Mode)
 
-After writing the manual to file, output the screenshot table **directly in the terminal** as a follow-up message to the user. Do NOT include this table in the markdown file.
+After writing the manual to file, output the screenshot table **both in the terminal AND in the manual markdown file** (append at the end, before the 快速上手清单 section if present, otherwise at the very end of the file).
 
 Format:
 
 ```
 ## 截图清单
 
-| 序号 | 占位符位置 | 截图描述 |
-|------|-----------|---------|
-| 图1  | 第1章 系统登录 | 登录页面全貌，展示Logo、输入框、按钮布局 |
-| 图2  | 第2章 首页概览 | 后台管理页面，展示左侧菜单栏和内容区域 |
-| ...  | ...       | ...     |
+| 序号 | 占位符位置 | 截图描述 | 文件名 |
+|------|-----------|---------|--------|
+| 图1  | 第1章 系统登录 | 登录页面全貌，展示Logo、输入框、按钮布局 | screenshots/1-login-page.png |
+| 图2  | 第2章 首页概览 | 后台管理页面，展示左侧菜单栏和内容区域 | screenshots/2-home-overview.png |
+| ...  | ...       | ...     | ...    |
 ```
+
+The table in the markdown file must include the same four columns (序号, 占位符位置, 截图描述, 文件名) so the user can track which screenshot files need to be created.
 
 ---
 
@@ -469,6 +477,8 @@ Format:
 | Inconsistent UI naming | Always use the exact label from the spec/source code |
 | Not outputting screenshot modification table in update mode | Always output the table in terminal after writing the file |
 | Missing product overview section | Always include 产品概述 with introduction, capabilities, and Mermaid flowchart |
+| Missing image link below placeholder | Every 【图X：...】 must have a matching `![图X](screenshots/X-name.png)` on the next line |
+| Screenshot table only in terminal | Must output screenshot table in BOTH terminal and markdown file |
 | Mermaid flowchart uses technical terms | Use user-facing action names, not module/API names |
 
 ---

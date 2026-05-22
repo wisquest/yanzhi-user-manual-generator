@@ -9,7 +9,7 @@
 在 Claude Code 中运行：
 
 ```
-/plugin marketplace add https://github.com/zhang-songhan/yanzhi-user-manual-generator
+/plugin marketplace add zhang-songhan/yanzhi-user-manual-generator
 ```
 
 ### 第二步：安装插件

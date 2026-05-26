@@ -225,7 +225,8 @@ When the legacy manual contains screenshots (`【图X：...】` placeholders or 
 4. **Determine action** for each screenshot: add, replace, remove, or keep
 
 Update screenshot placeholders in the new manual:
-- Renumber sequentially after additions/removals
+
+- **CRITICAL: If ANY screenshot was added or deleted, renumber ALL screenshots from 图1 upward in ascending order.** Do not keep gaps or skip numbers. Every placeholder in the new manual must use sequential numbering (图1, 图2, 图3, ...). This ensures the final manual has a clean, continuous sequence. If screenshots only had their content replaced (same count, no additions/removals), keep the original numbering.
 - Update descriptions for replaced screenshots to reflect new UI states
 - Remove placeholders for deleted features
 - Add new placeholders for new features
@@ -491,6 +492,7 @@ This ensures the user knows exactly where to put screenshots and what to name th
 | Missing FAQ | Always include FAQ section with real error messages |
 | No quick start guide | End with a 5-step checklist for first-time users |
 | Inconsistent UI naming | Always use the exact label from the spec/source code |
+| Not renumbering screenshots from 图1 after additions/removals | When screenshots are added or removed, renumber ALL screenshots from 图1 upward sequentially |
 | Not outputting screenshot modification table in update mode | Always output the table in terminal after writing the file |
 | Missing product overview section | Always include 产品概述 with introduction, capabilities, and Mermaid flowchart |
 | Missing image link below placeholder | Every 【图X：...】 must have a matching `![图X](screenshots/X-name.png)` on the next line |

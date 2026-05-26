@@ -230,13 +230,14 @@ graph TD
 4. Rewrite the `<img src>` to `media/{filename}` in HTML
 
 **Non-image files (PDFs, docs):**
+
 1. Same copy-to-media process
 2. Rewrite link `href` to `media/{filename}`
 
 **Company logos:**
 - Always copy all files from `company_style/` to `{output}/media/`
 - Header uses `研知教育科技_horizontal_logo.png`
-- Footer uses `研智教育科技_horizontal_logo_widemargin.png`
+- Footer uses `研知教育科技_horizontal_logo_widemargin.png`
 - Circle logo available for favicon if desired
 - **Horizontal logos have black text — NEVER place them on dark backgrounds.** The header and footer bars must use a light/white background (`#ffffff` or `var(--neutral-100)`) to keep logo text legible
 
@@ -256,8 +257,8 @@ graph TD
     ├── 图1-登录页面.png
     ├── 图2-首页概览.png
     ├── 研知教育科技_horizontal_logo.png
-    ├── 研智教育科技_horizontal_logo_widemargin.png
-    └── 研智教育科技_white_circle_background.png
+    ├── 研知教育科技_horizontal_logo_widemargin.png
+    └── 研知教育科技_white_circle_background.png
 ```
 
 ## Common Mistakes

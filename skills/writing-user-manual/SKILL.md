@@ -168,6 +168,7 @@ digraph update_flow {
   "Map changes to screenshot actions" [shape=box];
   "Update manual content" [shape=box];
   "Write to NEW file" [shape=box];
+  "Copy legacy screenshots to new manual" [shape=box];
   "Output screenshot modification table in terminal" [shape=box];
   "Done" [shape=doublecircle];
 
@@ -187,7 +188,8 @@ digraph update_flow {
   "Legacy has screenshots?" -> "Update manual content" [label="no"];
   "Map changes to screenshot actions" -> "Update manual content";
   "Update manual content" -> "Write to NEW file";
-  "Write to NEW file" -> "Output screenshot modification table in terminal";
+  "Write to NEW file" -> "Copy legacy screenshots to new manual";
+  "Copy legacy screenshots to new manual" -> "Output screenshot modification table in terminal";
   "Output screenshot modification table in terminal" -> "Done";
 }
 ```
@@ -240,7 +242,8 @@ Update screenshot placeholders in the new manual:
 5. Remove sections for removed features
 6. Update version name in the manual header to the newest version
 7. **Write output to a NEW file** — never overwrite the legacy manual
-8. Output the Screenshot Modification Table in terminal (NOT in the output file)
+8. **Copy screenshot files from the legacy manual** — if the legacy manual has associated screenshot files (in its `screenshots/` directory), copy all **kept** and **replaced** screenshots to the new manual's `screenshots/` directory. This ensures existing screenshots are preserved in the new manual and only need to be manually updated for replaced ones. New screenshots for added features will need to be created by the user.
+9. Output the Screenshot Modification Table in terminal (NOT in the output file)
 
 ### Screenshot Modification Table
 
@@ -493,6 +496,7 @@ This ensures the user knows exactly where to put screenshots and what to name th
 | No quick start guide | End with a 5-step checklist for first-time users |
 | Inconsistent UI naming | Always use the exact label from the spec/source code |
 | Not renumbering screenshots from 图1 after additions/removals | When screenshots are added or removed, renumber ALL screenshots from 图1 upward sequentially |
+| Not copying legacy screenshots to new manual directory | Copy all kept/replaced screenshots from legacy `screenshots/` to new manual's `screenshots/` directory |
 | Not outputting screenshot modification table in update mode | Always output the table in terminal after writing the file |
 | Missing product overview section | Always include 产品概述 with introduction, capabilities, and Mermaid flowchart |
 | Missing image link below placeholder | Every 【图X：...】 must have a matching `![图X](screenshots/X-name.png)` on the next line |

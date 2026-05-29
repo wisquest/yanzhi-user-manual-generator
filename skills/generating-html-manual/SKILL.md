@@ -94,9 +94,20 @@ Convert the markdown content to well-structured HTML following these rules:
 
 **Media path rewrite:** All media references in the HTML must point to `media/` relative path.
 
-**Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must have a fixed maximum width. Set `max-width: 600px` (or `width: 100%; max-width: 600px`) so images never stretch wider than the content area. This keeps screenshots readable without overwhelming the page layout.
+**Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must have a fixed height: `height: 450px; object-fit: contain; object-position: center; max-width: 600px; width: 100%`. This ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
 
 **Image placeholder captions:** Placeholder text like `【图X：...】` describes what the image should contain. Render this text as a small caption (`<figcaption>`) **below** the image/placeholder, styled in a smaller font size (`0.85em`) and muted color (`var(--neutral-400)`). The placeholder text is an annotation, not a heading.
+
+**Button icon descriptions:** If the markdown contains "按钮图标说明" sections (blockquotes with a list of icon names and corresponding `<figure><img>` elements), convert them to clean **tables** with two columns: 图标 (icon image) and 名称 (name). Use `<img class="icon-inline">` for the icon column, with CSS `height: 1.3em; width: auto` so icons render at text-line height. This is far more readable than the original blockquote+list+figure format. Example table structure:
+```html
+<p><strong>按钮图标说明</strong></p>
+<table>
+  <thead><tr><th>图标</th><th>名称</th></tr></thead>
+  <tbody>
+    <tr><td><img src="media/icons/xxx.png" alt="名称" class="icon-inline"></td><td>名称</td></tr>
+  </tbody>
+</table>
+```
 
 ### Step 4: Apply HTML Template
 
@@ -126,6 +137,7 @@ Generate a complete standalone HTML page with the following structure and design
 | Header height | 64px, fixed top |
 | Sidebar width | 280px, fixed left |
 | Content max-width | 900px, centered |
+| Anchor scroll offset | `scroll-margin-top: 80px` on all `h2` and `h3` to prevent fixed header from covering targets |
 | Back-to-top trigger | Scroll > 400px |
 | Mobile breakpoint | ≤1024px: sidebar hidden, toggle shown |
 | Print | Hide header, sidebar, back-to-top; full-width content |
@@ -212,6 +224,7 @@ graph TD
 ### Styling
 
 - Set `max-width: 100%` on `.mermaid` SVG output to prevent overflow on mobile
+- Give `<pre class="mermaid">` a **fixed height** matching screenshot images: `height: 450px; overflow: auto; display: block`. Use `display: block` (NOT `display: flex`) — flex centering clips the top of tall diagrams even with scrollbars
 - Add a subtle border and background to the `<pre class="mermaid">` container so it's visually distinct
 - Mermaid text color defaults should remain readable against the page background
 
@@ -282,3 +295,8 @@ graph TD
 | TOC section duplicated in body | Sidebar already shows TOC — omit "目录" sections from content |
 | Screenshot index table included in HTML | Omit "截图索引" section entirely — it's a build-time reference, not end-user content |
 | Outputting raw Mermaid code in HTML | Convert ```` ```mermaid ```` blocks to `<pre class="mermaid">` with CDN + initialization |
+| Button icon descriptions as messy blockquotes | Convert "按钮图标说明" to clean 2-column tables (图标 \| 名称) with `.icon-inline` class |
+| Anchor scroll hidden behind fixed header | Add `scroll-margin-top: 80px` to all `h2` and `h3` headings |
+| Lazy images shift anchor scroll position | Give screenshot `<img>` explicit `width`/`height` attrs + CSS `height: 450px; object-fit: contain` |
+| Mermaid diagram different height than screenshots | Give `<pre class="mermaid">` `height: 450px` to match screenshot height |
+| Mermaid diagram top clipped with flex | Use `display: block` (NOT `display: flex`) on `<pre class="mermaid">` to avoid overflow clipping |

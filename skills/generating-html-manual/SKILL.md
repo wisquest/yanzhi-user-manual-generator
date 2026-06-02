@@ -24,9 +24,29 @@ Convert a Markdown user manual into a self-contained, styled HTML page with side
 - Read `color-spec.md` in this skill's directory for the complete color system and design tokens.
 - Read `company_style/` in this skill's directory for logo assets.
 
-**DEVELOPMENT METHODOLOGY:**
-- This skill generates a standalone single HTML webpage with embedded styles and scripts. When implementing the HTML output (Steps 3-4), use the `superpowers:test-driven-development` Skill to guide test-first development of the HTML page — verifying structure, styles, and interactive behaviors (sidebar toggle, anchor scroll offset, back-to-top, responsive breakpoints, etc.) before finalizing the output.
-- If the `superpowers:test-driven-development` Skill is not available in the current environment, skip the TDD requirement and generate the HTML directly.
+**DEVELOPMENT METHODOLOGY — TDD Required (RED-GREEN-REFACTOR):**
+
+This skill generates a standalone single HTML webpage. **HTML code generation (Steps 3-4) MUST follow the superpowers TDD cycle:**
+
+1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
+   - Correct heading hierarchy and ID slugs
+   - TOC link targets resolve to valid heading IDs
+   - Sidebar collapse/expand behavior (desktop push mode + mobile overlay mode)
+   - Anchor scroll offset prevents fixed header from hiding targets
+   - Back-to-top button visibility (hidden at top, visible after scroll > 400px)
+   - Responsive breakpoints (≤1024px overlay, ≤640px reduced fonts)
+   - Contrast rules (no dark text on dark backgrounds)
+   - Media path correctness (all `src`/`href` point to files that exist in `media/`)
+   - Print styles hide navigation chrome
+   - `localStorage` sidebar state persistence across page reloads
+2. **GREEN — Write minimal code to pass:** Generate the HTML body, apply the template, wire up interactivity — one test at a time. Each increment of HTML/CSS/JS must correspond to a test that was already written and seen to fail.
+3. **REFACTOR — Improve while keeping tests green:** Deduplicate styles, optimize selectors, streamline event handlers, improve semantic markup. Never add new behavior during refactoring.
+
+**REQUIRED SUB-SKILL:** Use `superpowers:test-driven-development` to guide this process — it defines the RED-GREEN-REFACTOR discipline and rationalization countermeasures that keep TDD honest.
+
+**Fallback:** If `superpowers:test-driven-development` is not available, still follow the TDD cycle described above. Do NOT skip testing because the skill is unavailable.
+
+**Iron Law:** No HTML code before its corresponding test exists. Code written before tests → delete it and start over. No exceptions.
 
 ## Workflow
 
@@ -101,6 +121,16 @@ Convert the markdown content to well-structured HTML following these rules:
 **Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must have a fixed height: `height: 450px; object-fit: contain; object-position: center; max-width: 600px; width: 100%`. This ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
 
 **Image placeholder captions:** Placeholder text like `【图X：...】` describes what the image should contain. Render this text as a small caption (`<figcaption>`) **below** the image/placeholder, styled in a smaller font size (`0.85em`) and muted color (`var(--neutral-400)`). The placeholder text is an annotation, not a heading.
+
+**Screenshot description shortening (CRITICAL):** The original Markdown may contain lengthy screenshot descriptions (e.g., `【图1：登录页面全貌，展示渐变背景、公司Logo、玻璃质感登录卡片、用户名输入框、密码输入框、"登录"按钮的整体布局】`). When converting to HTML, **shorten every screenshot caption to 10 characters or fewer** (not counting the prefix `图X：`). The caption must be a concise label, not a detailed description:
+
+| Original Markdown | HTML `<figcaption>` |
+|---|---|
+| `【图1：登录页面全貌，展示渐变背景、公司Logo、玻璃质感登录卡片】` | `图1：登录页面` |
+| `【图2：首页概览，包含顶部导航栏、数据统计卡片、图表区域】` | `图2：首页概览` |
+| `【图3：用户管理界面，展示用户列表、搜索框、新增按钮】` | `图3：用户管理` |
+
+**Rule:** Extract only the core page/feature name (≤10 characters after `图X：`). Discard all descriptive detail — the screenshot itself shows what the text describes. The caption is a label, not a replacement for viewing the image.
 
 **Button icon descriptions:** If the markdown contains "按钮图标说明" sections (blockquotes with a list of icon names and corresponding `<figure><img>` elements), convert them to clean **tables** with two columns: 图标 (icon image) and 名称 (name). Use `<img class="icon-inline">` for the icon column, with CSS `height: 1.3em; width: auto` so icons render at text-line height. This is far more readable than the original blockquote+list+figure format. Example table structure:
 ```html
@@ -324,6 +354,7 @@ graph TD
 | Missing print styles | Include `@media print` to hide navigation elements |
 | Horizontal logo on dark background | Logo text is black — header/footer must be white/light |
 | Screenshot images too large | Set `max-width: 600px` on all `<figure>` images |
+| Screenshot caption too long (detailed description) | Shorten to ≤10 characters after `图X：` — captions are labels, not image descriptions |
 | Placeholder text above image | Place `【图X：...】` caption below image as `<figcaption>` |
 | Dark text on dark background | Use white/light text on any dark-colored element |
 | TOC section duplicated in body | Sidebar already shows TOC — omit "目录" sections from content |

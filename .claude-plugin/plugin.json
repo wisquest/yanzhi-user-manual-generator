@@ -1,5 +1,5 @@
 {
   "name": "yanzhi-user-manual-generator",
   "description": "A Claude Code plugin that generates friendly user manuals from source codes or spec documentations.",
-  "version": "v260602-103719"
+  "version": "v260602-063558"
 }

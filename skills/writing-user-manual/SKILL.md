@@ -120,14 +120,7 @@ If the project has any visual interface (web UI, desktop app, CLI, TUI, mobile a
 
 Ask the user using AskUserQuestion:
 
-> 您的项目是 Web 前端应用，我可以使用自动化截图工具为每个截图占位符自动截取真实的页面截图。工具将：
->
-> 1. 启动项目开发服务器（或使用您提供的 URL）
-> 2. 自动导航到每个页面
-> 3. 截取**整页截图**（包括长页面的所有内容）
-> 4. 保存到 `screenshots/` 目录，文件名与手册中的图片链接一一对应
->
-> 请问是否需要自动截图？
+> 您的项目是 Web 前端应用，我可以使用 `auto-capture-for-webapp:take-screenshots` 为每个截图占位符自动截取真实的页面截图。请问是否需要自动截图？
 
 - If user agrees → Generate manual with placeholders, then proceed to **Step 5: Auto-Capture Screenshots** after writing the manual.
 - If user declines → Generate manual without placeholders (skip placeholders entirely).
@@ -159,27 +152,13 @@ Follow the Manual Structure and Quality Standards below.
 
 After the manual markdown file is written with screenshot placeholders:
 
-1. **Parse the placeholders**: Extract all `【图X：...】` placeholders and their corresponding `![图X](screenshots/X-name.png)` image links from the generated manual. Build a mapping of:
-   - Figure number (X)
-   - Screenshot description (the Chinese text inside `【图X：...】`)
-   - Target filename (from the markdown image link, e.g., `screenshots/1-login-page.png`)
+1. **Parse the placeholders**: Extract all `【图X：...】` placeholders and their corresponding `![图X](screenshots/X-name.png)` image links from the generated manual. Build a mapping of figure number, description, and target filename.
 
-2. **Invoke the take-screenshots Skill**: Use the `Skill` tool with `auto-capture-for-webapp:take-screenshots`. Pass the placeholder list as context so the take-screenshots skill knows exactly which pages to capture and what filenames to use. The take-screenshots skill will:
-   - Start the project's dev server (or use the provided URL)
-   - Navigate to each page/state described in the placeholders
-   - Capture **full-page** screenshots (`fullPage: true`)
-   - Save them to the `screenshots/` directory with the exact filenames from the placeholder image links
+2. **Invoke `auto-capture-for-webapp:take-screenshots`**: Use the `Skill` tool, passing the placeholder list as context (descriptions + target filenames).
 
-3. **After screenshots are captured**, verify that the screenshot files exist in `screenshots/` with names matching the markdown image links. The manual is already correctly structured — the `![图X](screenshots/X-name.png)` links will now resolve to real images.
+3. **After screenshots are captured**, verify that the screenshot files exist in `screenshots/` with names matching the markdown image links.
 
-4. **If any screenshots fail**, report which ones failed and why. The placeholder/image-link structure in the manual remains valid — the user can manually fill in any failed screenshots later.
-
-**IMPORTANT:** The take-screenshots skill enforces:
-- **Full-page screenshots only** (`fullPage: true`) — all content, even long scrollable pages
-- **Read-only operations** — never modify application data
-- **Sequential processing** — one page at a time, main thread only
-- **MCP browser automation** — uses Chrome DevTools MCP (preferred) or Playwright MCP
-- **Preserve screenshot directory** — never delete existing screenshots
+4. **If any screenshots fail**, report which ones failed and why — the user can fill them in manually.
 
 ---
 
@@ -230,9 +209,14 @@ digraph update_flow {
   "Identify changes between versions" [shape=box];
   "Legacy has screenshots?" [shape=diamond];
   "Map changes to screenshot actions" [shape=box];
+  "Has new/replaced screenshots?" [shape=diamond];
+  "Is web frontend?" [shape=diamond];
+  "Ask: auto-capture changed screenshots?" [shape=box];
+  "User agrees to auto-capture?" [shape=diamond];
   "Update manual content" [shape=box];
   "Write to NEW file" [shape=box];
   "Copy legacy screenshots to new manual" [shape=box];
+  "Invoke take-screenshots for changed only" [shape=box];
   "Output screenshot modification table in terminal" [shape=box];
   "Done" [shape=doublecircle];
 
@@ -250,10 +234,19 @@ digraph update_flow {
   "Identify changes between versions" -> "Legacy has screenshots?";
   "Legacy has screenshots?" -> "Map changes to screenshot actions" [label="yes"];
   "Legacy has screenshots?" -> "Update manual content" [label="no"];
-  "Map changes to screenshot actions" -> "Update manual content";
+  "Map changes to screenshot actions" -> "Has new/replaced screenshots?";
+  "Has new/replaced screenshots?" -> "Is web frontend?" [label="yes"];
+  "Has new/replaced screenshots?" -> "Update manual content" [label="no"];
+  "Is web frontend?" -> "Ask: auto-capture changed screenshots?" [label="yes"];
+  "Is web frontend?" -> "Update manual content" [label="no"];
+  "Ask: auto-capture changed screenshots?" -> "User agrees to auto-capture?";
+  "User agrees to auto-capture?" -> "Update manual content" [label="yes"];
+  "User agrees to auto-capture?" -> "Update manual content" [label="no"];
   "Update manual content" -> "Write to NEW file";
   "Write to NEW file" -> "Copy legacy screenshots to new manual";
-  "Copy legacy screenshots to new manual" -> "Output screenshot modification table in terminal";
+  "Copy legacy screenshots to new manual" -> "Invoke take-screenshots for changed only" [label="auto-capture agreed"];
+  "Copy legacy screenshots to new manual" -> "Output screenshot modification table in terminal" [label="no auto-capture"];
+  "Invoke take-screenshots for changed only" -> "Output screenshot modification table in terminal";
   "Output screenshot modification table in terminal" -> "Done";
 }
 ```
@@ -297,6 +290,33 @@ Update screenshot placeholders in the new manual:
 - Remove placeholders for deleted features
 - Add new placeholders for new features
 
+### Step 3.5: Determine Auto-Capture Eligibility (Update Mode)
+
+After determining screenshot actions (新增/替换/保留/删除), check if auto-capture can be used for screenshots that need to change. The same qualification criteria as Mode 1 Step 3 apply:
+
+- It is a **web frontend application** with a browser-based UI (HTML/CSS/JS, React, Vue, Angular, Next.js, etc.)
+- The user provides **source code** (you can start the dev server) OR a **running URL**
+- It is NOT a CLI app, desktop app, mobile app, or backend-only service
+
+**If the project qualifies AND there are screenshots marked 新增 or 替换:**
+
+Ask the user using AskUserQuestion:
+
+> 您的项目是 Web 前端应用，本次手册更新涉及 [N] 张新增截图和 [M] 张需要替换的截图。我可以使用 `auto-capture-for-webapp:take-screenshots` 为这些变更的截图自动截取真实页面截图。保留下来的旧截图会从旧手册的 `screenshots/` 目录复制过来。
+>
+> 请问是否需要为变更的截图自动截图？
+
+- If user agrees → Proceed to Step 4 and Step 5 (auto-capture after writing).
+- If user declines → Proceed without auto-capture. New/replaced screenshots will be listed in the modification table for manual creation.
+
+**If the project does NOT qualify (CLI, TUI, desktop, mobile, no source/URL):**
+
+Skip auto-capture. All new/replaced screenshots must be created manually. Proceed to Step 4.
+
+**If there are NO screenshots marked 新增 or 替换 (only 保留 and/or 删除):**
+
+Skip auto-capture. No new screenshots needed. Proceed directly to Step 4.
+
 ### Step 4: Update Manual Content
 
 1. Read the legacy manual structure
@@ -306,25 +326,45 @@ Update screenshot placeholders in the new manual:
 5. Remove sections for removed features
 6. Update version name in the manual header to the newest version
 7. **Write output to a NEW file** — never overwrite the legacy manual
-8. **Copy screenshot files from the legacy manual** — if the legacy manual has associated screenshot files (in its `screenshots/` directory), copy all **kept** and **replaced** screenshots to the new manual's `screenshots/` directory. This ensures existing screenshots are preserved in the new manual and only need to be manually updated for replaced ones. New screenshots for added features will need to be created by the user.
+8. **Copy screenshot files from the legacy manual** — if the legacy manual has associated screenshot files (in its `screenshots/` directory), copy all **kept** screenshots to the new manual's `screenshots/` directory. For **replaced** screenshots: copy them too as fallback (they will be overwritten if auto-capture is used in Step 5). For **新增** screenshots: they will be captured by auto-capture (Step 5) if the user agreed, otherwise the user creates them manually.
 9. Output the Screenshot Modification Table in terminal (NOT in the output file)
 
 ### Screenshot Modification Table
 
 Output this table **directly in the terminal** after writing the new file. Do NOT include it in the output markdown file.
 
+If auto-capture was used (Step 5), add "（已自动截取）" suffix to the 修改说明 for successfully captured screenshots, and "（自动截取失败，需手动创建）" for failed ones.
+
 ```
 ## 截图修改清单
 
 | 序号 | 操作 | 所在章节 | 修改说明 |
 |------|------|---------|---------|
-| 图1  | 新增 | 第X章 新功能名称 | [截图描述：需要截取什么界面、展示什么状态] |
-| 图3  | 替换 | 第2章 功能Y | 原截图展示旧版界面，需替换为新版截图 |
+| 图1  | 新增 | 第X章 新功能名称 | [截图描述：需要截取什么界面、展示什么状态]（已自动截取） |
+| 图3  | 替换 | 第2章 功能Y | 原截图展示旧版界面，需替换为新版截图（已自动截取） |
 | 图7  | 删除 | 第4章 已移除功能 | 功能已删除，截图不再需要 |
 | 图2  | 保留 | 第1章 系统登录 | 登录界面未变更，保留原有截图 |
 ```
 
 Action types: **新增** (add), **替换** (replace), **删除** (remove), **保留** (keep)
+
+### Step 5: Auto-Capture for Changed Screenshots (Update Mode, Web Frontend Only)
+
+**Only execute this step if** the user agreed to auto-capture in Step 3.5 AND there are screenshots marked 新增 or 替换.
+
+After Steps 3-4 are complete (manual written to NEW file, legacy screenshots copied):
+
+1. **Identify target screenshots**: From the modification table, extract only the screenshots marked **新增** or **替换**. Screenshots marked **保留** are already copied from the legacy manual.
+
+2. **Build the capture list**: For each 新增 or 替换 screenshot, extract figure number, description, and target filename from the placeholder and image link.
+
+3. **Invoke `auto-capture-for-webapp:take-screenshots`**: Use the `Skill` tool, passing ONLY the changed screenshot list (not the kept ones). Include context that existing screenshots in `screenshots/` must be preserved (they include kept screenshots from the legacy manual).
+
+4. **After screenshots are captured**, verify the captured files exist in `screenshots/` alongside the kept screenshots.
+
+5. **If any captures fail**, report which ones — the user can fill them in manually.
+
+6. **Update the screenshot modification table**: mark auto-captured screenshots with "（已自动截取）", failed ones with "（自动截取失败，需手动创建）".
 
 ---
 
@@ -574,6 +614,9 @@ This ensures the user knows exactly where to put screenshots and what to name th
 | Mermaid flowchart uses technical terms | Use user-facing action names, not module/API names |
 | Not using auto-capture for web frontend projects | When project qualifies (web frontend + source/URL), offer auto-capture via `auto-capture-for-webapp:take-screenshots` before falling back to manual placeholders |
 | Not invoking take-screenshots skill after generating manual | When auto-capture is agreed, invoke `Skill` tool with `auto-capture-for-webapp:take-screenshots` immediately after writing the manual file |
+| Not checking auto-capture eligibility when updating manual | In update mode, if there are 新增/替换 screenshots and the project is a web frontend, offer auto-capture (Step 3.5) before writing the manual |
+| Not invoking auto-capture for changed screenshots in update mode | When auto-capture is agreed in update mode, invoke `Skill` tool with `auto-capture-for-webapp:take-screenshots` for ONLY the 新增/替换 screenshots (not all screenshots) |
+| Auto-capturing all screenshots in update mode (including kept ones) | Only capture 新增 and 替换 screenshots. 保留 screenshots are copied from legacy `screenshots/` directory. Capturing all wastes time and the kept pages may not have changed |
 
 ---
 

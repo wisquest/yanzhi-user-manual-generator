@@ -41,6 +41,8 @@ digraph generate_flow {
   "Extract version name from source/spec" [shape=box];
   "Version found?" [shape=diamond];
   "WARN user and STOP" [shape=box];
+  "Ask user to confirm version" [shape=box];
+  "User confirms?" [shape=diamond];
   "Analyze project for operation flows" [shape=box];
   "Has visual interface?" [shape=diamond];
   "Is web frontend?" [shape=diamond];
@@ -55,7 +57,11 @@ digraph generate_flow {
 
   "Extract version name from source/spec" -> "Version found?";
   "Version found?" -> "WARN user and STOP" [label="no"];
-  "Version found?" -> "Analyze project for operation flows" [label="yes"];
+  "Version found?" -> "Ask user to confirm version" [label="yes"];
+  "Ask user to confirm version" -> "User confirms?" [label="correct"];
+  "Ask user to confirm version" -> "WARN user and STOP" [label="wrong, ask to provide"];
+  "User confirms?" -> "Analyze project for operation flows" [label="yes"];
+  "User confirms?" -> "WARN user and STOP" [label="no (refuse to provide)"];
   "Analyze project for operation flows" -> "Has visual interface?";
   "Has visual interface?" -> "Is web frontend?" [label="yes"];
   "Has visual interface?" -> "Generate manual without placeholders" [label="no"];
@@ -92,7 +98,15 @@ digraph generate_flow {
 
 3. Do NOT proceed with manual generation until the user provides or confirms a version name.
 
-**If version name found:** Record it. It will be included in the manual header.
+**If version name found:** Do NOT proceed automatically. You MUST ask the user to confirm the version before continuing:
+
+1. Present the found version to the user using `AskUserQuestion`:
+   > 在您的源代码/规格文档中找到了以下版本名称：**V2.3.0**（来源：[file path or config key]）。请确认这是否是正确的版本名称？
+
+   Provide two options: "确认，版本正确" and "版本不对，我来提供"
+2. **If user confirms:** Record the version. Continue to Step 2.
+3. **If user says the version is wrong:** Ask the user to provide the correct version name. Once provided, record it. If the user cannot or refuses to provide a correct version, STOP — do not proceed.
+4. The confirmed version will be included in the manual header.
 
 ### Step 2: Analyze Project for Operation Flows
 
@@ -200,6 +214,8 @@ digraph update_flow {
   "Extract legacy version name" [shape=box];
   "Read newer source/spec" [shape=box];
   "Extract newest version name" [shape=box];
+  "Ask user to confirm versions" [shape=box];
+  "User confirms versions?" [shape=diamond];
   "Search input files for version history" [shape=box];
   "Version history found?" [shape=diamond];
   "Ask user for version history or changes" [shape=box];
@@ -223,7 +239,10 @@ digraph update_flow {
   "Read legacy manual" -> "Extract legacy version name";
   "Extract legacy version name" -> "Read newer source/spec";
   "Read newer source/spec" -> "Extract newest version name";
-  "Extract newest version name" -> "Search input files for version history";
+  "Extract newest version name" -> "Ask user to confirm versions";
+  "Ask user to confirm versions" -> "User confirms versions?";
+  "User confirms versions?" -> "Search input files for version history" [label="yes"];
+  "User confirms versions?" -> "STOP: cannot proceed" [label="no (refuse to provide)"];
   "Search input files for version history" -> "Version history found?";
   "Version history found?" -> "Anchor legacy version in version history" [label="yes"];
   "Version history found?" -> "Ask user for version history or changes" [label="no"];
@@ -257,6 +276,20 @@ Extract version names from both inputs:
 
 - **Legacy manual** — the version the manual was written for (from manual header or metadata)
 - **Newer source/spec** — the latest version
+
+**CRITICAL: Version confirmation required.** After extracting versions, you MUST ask the user to confirm both version names before proceeding:
+
+1. Present the extracted versions using `AskUserQuestion`:
+   > 从您的输入文件中识别到以下版本信息：
+   > - **旧版本（原有手册）**：V1.0.0（来源：[manual filename]）
+   > - **新版本（最新代码/文档）**：V2.3.0（来源：[config file or spec]）
+   >
+   > 请确认这些版本是否正确？如有任一版本不正确，请提供准确的版本名称。
+
+   Provide two options: "确认，两个版本都正确" and "版本不对，我来纠正"
+2. **If user confirms:** Proceed to anchor the legacy version in the version history.
+3. **If user says versions are wrong:** Ask the user to provide the correct version names for each incorrect version. Once corrected, proceed.
+4. **If user cannot or refuses to provide correct versions:** STOP — do not proceed.
 
 Anchor the legacy version in the version history. Determine the full scope of changes: everything from the legacy version up to the newest version.
 
@@ -595,8 +628,11 @@ This ensures the user knows exactly where to put screenshots and what to name th
 |---------|-----|
 | Organizing by technical modules | Reorganize by user operation flows |
 | Missing version name | Always extract and validate version before generating |
+| Using unconfirmed version name | After finding a version, always ask user to confirm it's correct before proceeding. Never auto-use a version without confirmation |
 | Overwriting legacy manual in update mode | Always write to a new file |
 | Skipping version validation | STOP if no version found in source/spec |
+| Not confirming both versions in update mode | In Mode 2, confirm BOTH legacy and newest versions with user. Either could be wrong |
+| Not confirming versions in update mode | Same confirmation rule as Mode 1 applies — never auto-use versions found in source/spec without user confirmation |
 | Ignoring version history in update mode | Anchor versions to determine exact change scope |
 | Writing for developers | Remove all technical jargon (API, endpoint, component) |
 | Skipping error scenarios | Include error tables for every user-facing failure |

@@ -31,7 +31,7 @@ This skill generates a standalone single HTML webpage. **HTML code generation (S
 1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
    - Correct heading hierarchy and ID slugs
    - TOC link targets resolve to valid heading IDs
-   - Sidebar collapse/expand behavior (desktop push mode + mobile overlay mode)
+   - Sidebar collapse/expand behavior (desktop push mode + mobile overlay mode). CRITICAL: after sidebar collapses, the expand button (☰ in header) must remain visible and clickable — sidebar must be re-expandable
    - Anchor scroll offset prevents fixed header from hiding targets
    - Back-to-top button visibility (hidden at top, visible after scroll > 400px)
    - Responsive breakpoints (≤1024px overlay, ≤640px reduced fonts)
@@ -180,7 +180,7 @@ Generate a complete standalone HTML page with the following structure and design
 | Header height | 64px, fixed top, `z-index: 1000` |
 | Sidebar width | 280px, fixed left, `z-index: 900` |
 | Sidebar collapsed | Width 0 (hidden), content area expands to full width. Transition: `width 0.3s ease` |
-| Sidebar toggle button | Always visible button (☰/✕ icon) in header or sidebar edge. On desktop: slides sidebar in/out. On mobile: overlay mode. |
+| Sidebar toggle button | Always visible button (☰/✕ icon) in **fixed header bar** (NEVER inside the sidebar — it would disappear when sidebar collapses). On desktop: slides sidebar in/out. On mobile: overlay mode. |
 | Sidebar state persistence | Save collapsed/expanded state to `localStorage` key `sidebar-collapsed`. Restore on page load. |
 | Content max-width | 900px, centered. When sidebar collapsed: `margin-left: 0`, content centers in full viewport |
 | Anchor scroll offset | CSS: `scroll-margin-top: 80px` on all `h2`/`h3`. JS: intercept TOC link clicks, call `scrollIntoView()` with manual offset for the 64px header + 16px breathing room |
@@ -212,12 +212,13 @@ Generate a complete standalone HTML page with the following structure and design
 
 The sidebar must support collapsing on ALL screen sizes, not just mobile:
 
-1. **Toggle button:** A button (☰ hamburger icon) is always visible — on desktop it's at the sidebar edge or in the header; on mobile it's in the header.
+1. **Toggle button — CRITICAL placement rule:** The toggle button (☰/✕ icon) MUST be placed **in the fixed header bar**, NOT inside the sidebar. If the button is inside the sidebar, it disappears when the sidebar collapses to width 0, leaving the user with no way to expand it back. The header is always visible regardless of sidebar state.
 2. **Desktop collapse:** Clicking toggle slides the sidebar out of view (width 0). The main content area's `margin-left` transitions from 280px to 0. The content re-centers in the full viewport.
-3. **State persistence:** Use `localStorage` to remember collapsed state across page loads. Key: `sidebar-collapsed`, value: `"true"` or `"false"`.
-4. **CSS transition:** `transition: width 0.3s ease` on sidebar, matching `transition: margin-left 0.3s ease` on content area.
-5. **Collapsed indicator:** When sidebar is collapsed, show a subtle vertical tab/button at the left edge of the screen to expand it back (or use the header toggle button).
-6. **Mobile:** Same toggle button switches to overlay mode (sidebar overlays content with dark backdrop) instead of push mode.
+3. **Expand button visibility when collapsed:** When the sidebar is collapsed, the header toggle button MUST still be visible and MUST show the ☰ (hamburger) icon to indicate "click to expand." Do NOT hide the toggle button or replace it with nothing when the sidebar is collapsed.
+4. **State persistence:** Use `localStorage` to remember collapsed state across page loads. Key: `sidebar-collapsed`, value: `"true"` or `"false"`.
+5. **CSS transition:** `transition: width 0.3s ease` on sidebar, matching `transition: margin-left 0.3s ease` on content area.
+6. **Collapsed indicator — optional enhancement:** As a secondary affordance, you may also show a subtle floating vertical tab/button at the left edge of the viewport when sidebar is collapsed. This is an ADDITION to the header toggle, not a replacement.
+7. **Mobile:** Same toggle button switches to overlay mode (sidebar overlays content with dark backdrop) instead of push mode. On mobile overlay mode, clicking backdrop or a TOC link closes the overlay.
 
 #### Anchor Scroll Behavior
 
@@ -376,6 +377,8 @@ graph TD
 | Mermaid diagram different height than screenshots | Give `<pre class="mermaid">` `height: 450px` to match screenshot height |
 | Mermaid diagram top clipped with flex | Use `display: block` (NOT `display: flex`) on `<pre class="mermaid">` to avoid overflow clipping |
 | Sidebar not collapsible on desktop | Add toggle button with CSS width transition + JS toggle + localStorage persistence |
+| Toggle button inside sidebar disappears when collapsed | Place toggle button in fixed header bar (NOT inside sidebar). Header is always visible regardless of sidebar state |
 | Sidebar collapse state lost on reload | Save state to `localStorage.getItem/setItem('sidebar-collapsed')`, restore on DOMContentLoaded |
+| No expand button after sidebar collapsed | Toggle button in header must remain visible and show ☰ icon when collapsed. Never hide the toggle button |
 | Fixed header covers anchor target on TOC click | Intercept TOC link clicks with JS, use `window.scrollTo()` with manual offset (header 64px + 16px padding) |
 | Anchor offset only uses CSS scroll-margin-top | CSS-only approach doesn't handle dynamic header height changes — add JS interception as primary method, CSS as fallback |

@@ -9,7 +9,7 @@
       "name": "yanzhi-user-manual-generator",
       "source": "./",
       "description": "A Claude Code plugin that generates friendly user manuals from source codes or spec documentations.",
-      "version": "v260603-103644",
+      "version": "v260604-111336",
       "author": {
         "name": "ATreep"
       }

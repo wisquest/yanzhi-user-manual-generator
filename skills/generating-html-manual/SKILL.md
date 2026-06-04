@@ -31,10 +31,10 @@ This skill generates a standalone single HTML webpage. **HTML code generation (S
 1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
    - Correct heading hierarchy and ID slugs
    - TOC link targets resolve to valid heading IDs
-   - Sidebar is always visible (no collapse/hide behavior) — sidebar width remains 280px at all times on desktop, no toggle button exists
+   - Sidebar toggle behavior — menu icon (☰) positioned left of the logo in the header toggles sidebar fold/unfold; sidebar defaults to visible (280px width), content area expands when sidebar is folded; toggle works at all screen sizes
    - Anchor scroll offset prevents fixed header from hiding targets
    - Back-to-top button visibility (hidden at top, visible after scroll > 400px)
-   - Responsive breakpoints (≤1024px: sidebar and content stack vertically or sidebar becomes a fixed overlay accessible via a toggle; ≤640px reduced fonts)
+   - Sidebar toggle works correctly at all screen sizes (menu icon always visible, fold/unfold animation smooth, content area reflows correctly)
    - Contrast rules (no dark text on dark backgrounds)
    - Media path correctness (all `src`/`href` point to files that exist in `media/`)
    - Print styles hide navigation chrome
@@ -140,7 +140,7 @@ Rationale: Screenshots and diagrams are informational content, not decorative el
 
 **Rule:** Extract only the core page/feature name (≤10 characters after `图X：`). Discard all descriptive detail — the screenshot itself shows what the text describes. The caption is a label, not a replacement for viewing the image.
 
-**Button icon descriptions:** If the markdown contains "按钮图标说明" sections (blockquotes with a list of icon names and corresponding `<figure><img>` elements), convert them to clean **tables** with two columns: 图标 (icon image) and 名称 (name). Use `<img class="icon-inline">` for the icon column, with CSS `height: 1.3em; width: auto` so icons render at text-line height. This is far more readable than the original blockquote+list+figure format. Example table structure:
+**Button icon descriptions:** Detect sections that describe button/icon mappings based on two features occurring together in proximity: (1) text containing "图标说明" or "图标列表" or "icon reference", and (2) one or more image links (`![alt](path)` or `<img>`) paired with icon names. When both features are detected, convert the section to a clean **table** with two columns: 图标 (icon image) and 名称 (name). Do NOT assume a specific markdown format (blockquote, list, paragraph, figure) — the detection is content-driven, not format-driven. Use `<img class="icon-inline">` for the icon column, with CSS `height: 1.3em; width: auto` so icons render at text-line height. Example table structure:
 ```html
 <p><strong>按钮图标说明</strong></p>
 <table>
@@ -157,9 +157,9 @@ Generate a complete standalone HTML page with the following structure and design
 
 #### Page Structure
 
-- **Header** — fixed top bar with company logo, page title, and version string. On mobile (≤1024px), contains a hamburger toggle for the sidebar overlay.
-- **Sidebar** — fixed left navigation with TOC, always visible on desktop (>1024px). No collapse/hide functionality on desktop — the sidebar is a permanent fixture. On mobile (≤1024px), sidebar becomes an overlay that can be toggled via the hamburger button in the header.
-- **Content** — main body area with max-width 900px, centered
+- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title, and version string. The menu icon toggles the sidebar fold/unfold.
+- **Sidebar** — fixed left navigation with TOC. Defaults to visible (280px width). Can be folded/unfolded via the menu icon in the header. When folded, the content area expands to fill the available space.
+- **Content** — main body area with max-width 900px, centered. Content area has `margin-left: 280px` when sidebar is visible; expands to full width when sidebar is folded.
 - **Footer** — company logo and copyright
 - **Back-to-top button** — fixed bottom-right, appears on scroll
 
@@ -176,12 +176,11 @@ Generate a complete standalone HTML page with the following structure and design
 
 | Element | Spec |
 |---------|------|
-| Header height | 64px, fixed top, `z-index: 1000` |
-| Sidebar width | 280px, fixed left, `z-index: 900`. Always visible on desktop (>1024px) — no collapse/hide. |
-| Content max-width | 900px, centered. Content area has `margin-left: 280px` on desktop to make room for the permanent sidebar. |
+| Header height | 64px, fixed top, `z-index: 1000`. Contains menu toggle icon (☰) on the far left, then logo, title, version. |
+| Sidebar width | 280px, fixed left, `z-index: 900`. Defaults to visible. Toggled by the header menu icon. Use CSS `transition` on `transform` or `margin-left` for smooth fold/unfold animation. |
+| Content max-width | 900px, centered. Content area has `margin-left: 280px` when sidebar is visible; transitions to `margin-left: 0` (or auto-centered) when sidebar is folded. |
 | Anchor scroll offset | CSS: `scroll-margin-top: 80px` on all `h2`/`h3`. JS: intercept TOC link clicks, call `scrollIntoView()` with manual offset for the 64px header + 16px breathing room |
 | Back-to-top trigger | Scroll > 400px |
-| Mobile breakpoint | ≤1024px: sidebar overlay mode (fixed position, full-height, shadow backdrop), toggle in header |
 | Print | Hide header, sidebar, back-to-top; full-width content |
 
 #### Contrast & Readability Rules
@@ -198,22 +197,16 @@ Generate a complete standalone HTML page with the following structure and design
 
 **Header and footer bars:** Must use a light/white background because the horizontal company logo has **black text** and would be invisible on dark surfaces.
 
-#### Responsive Behavior
+#### Sidebar Toggle Behavior
 
-- **Desktop (>1024px):** Sidebar always visible (280px), content offset with `margin-left: 280px`. No collapse/hide toggle exists — the sidebar is a permanent part of the layout.
-- **Tablet/Mobile (≤1024px):** Sidebar hidden by default, hamburger toggle in header. When toggled open, sidebar displays as an overlay (full-height, shadow backdrop, closes on backdrop click or nav link click). Header has the hamburger button only on mobile.
-- **Small mobile (≤640px):** Reduced heading font sizes. Overlay sidebar takes full width.
+The sidebar can be folded/unfolded via the menu icon (☰) in the header:
 
-#### Sidebar Always Visible
-
-The sidebar TOC navigation is a permanent part of the page layout:
-
-1. **Desktop (>1024px):** Sidebar is always visible at 280px width. No collapse button, no hide functionality, no toggle in header. The sidebar cannot be hidden by the user — it is a fixed part of the layout at all times.
-2. **Content offset:** The main content area always has `margin-left: 280px` on desktop to accommodate the permanent sidebar.
-3. **No localStorage persistence:** Since the sidebar never collapses, there is no need for `localStorage` sidebar state tracking.
-4. **No CSS transitions for sidebar width:** The sidebar width is static — no `transition` on `width` or `margin-left` needed.
-5. **Mobile (≤1024px):** Sidebar defaults to hidden (overlay mode). The header displays a hamburger button (☰) that toggles the sidebar as a full-height overlay with dark backdrop. Clicking the backdrop or a TOC link closes the overlay.
-6. **Header toggle button:** The hamburger toggle button only appears on mobile (≤1024px). On desktop, there is no toggle button — the header contains only the logo, title, and version.
+1. **Menu icon position:** The ☰ icon sits to the **left of the logo** in the header bar. It is always visible.
+2. **Default state:** Sidebar visible (unfolded), 280px width. Content area has `margin-left: 280px`.
+3. **Folded state:** Sidebar hidden. Content area expands to full width (centered via auto margins, max-width 900px).
+4. **Toggle action:** Clicking the menu icon toggles between folded and unfolded states. Use CSS transitions for smooth animation.
+5. **localStorage persistence:** Persist the sidebar fold state in `localStorage` so the user's preference is remembered across page loads.
+6. **TOC link clicks:** When a TOC link is clicked, scroll to the target heading with proper offset. Do NOT fold the sidebar on link click — the user controls sidebar state explicitly via the menu icon.
 
 #### Anchor Scroll Behavior
 
@@ -228,7 +221,6 @@ TOC link clicks must scroll to the target heading with proper offset to prevent 
 3. **Edge cases:**
    - Target element doesn't exist → silently ignore (don't throw)
    - Already at target → no scroll needed
-   - Mobile overlay mode (≤1024px) → close sidebar overlay after TOC link click
 4. **Back-to-top button:** Use the same smooth scroll approach: `window.scrollTo({ top: 0, behavior: 'smooth' })`
 
 ### Step 5: Verify
@@ -351,7 +343,6 @@ graph TD
 | Absolute paths for media | Always use relative `media/` paths |
 | Missing heading IDs | Every heading needs an `id` for TOC linking |
 | Forgetting to copy logos | Always copy all `company_style/` files |
-| Hardcoded sidebar visible on mobile | Use responsive CSS + JS toggle |
 | Not handling duplicate heading text | Append `-2`, `-3` etc. to duplicate slugs |
 | Using non-Chinese UI text | Default to Simplified Chinese for all chrome text |
 | Overwriting original markdown | Output to a new folder, never modify the source |
@@ -365,15 +356,15 @@ graph TD
 | TOC section duplicated in body | Sidebar already shows TOC — omit "目录" sections from content |
 | Screenshot index table included in HTML | Omit "截图索引" section entirely — it's a build-time reference, not end-user content |
 | Outputting raw Mermaid code in HTML | Convert ```` ```mermaid ```` blocks to `<pre class="mermaid">` with CDN + initialization |
-| Button icon descriptions as messy blockquotes | Convert "按钮图标说明" to clean 2-column tables (图标 \| 名称) with `.icon-inline` class |
+| Button icon descriptions not converted to tables | Detect "图标说明" sections by content (icon-description text + image links), not by markdown format. Convert to clean 2-column tables (图标 \| 名称) with `.icon-inline` class |
 | Anchor scroll hidden behind fixed header | Add `scroll-margin-top: 80px` to all `h2` and `h3` headings |
 | Lazy images shift anchor scroll position | Give screenshot `<img>` explicit `width`/`height` attrs + CSS `height: 450px; object-fit: contain` |
 | Images have opacity applied (semi-transparent) | All images must be fully opaque — NEVER apply `opacity`, `transition: opacity`, or `:hover { opacity }` to `<img>`, `<figure>`, or image containers |
 | Mermaid diagram different height than screenshots | Give `<pre class="mermaid">` `height: 450px` to match screenshot height |
 | Mermaid diagram top clipped with flex | Use `display: block` (NOT `display: flex`) on `<pre class="mermaid">` to avoid overflow clipping |
-| Sidebar has collapse/hide button on desktop | Remove any collapse toggle from desktop view — sidebar is always visible on desktop (>1024px), no toggle button in header |
-| Toggle button in header on desktop | Header toggle button (☰) should only appear on mobile (≤1024px). Desktop header has no toggle — just logo, title, version |
-| Sidebar uses localStorage for state | No localStorage needed for sidebar state — sidebar is always visible on desktop, no collapse state to persist |
-| Sidebar has CSS width transitions | Remove `transition: width` or `transition: margin-left` — sidebar width is static on desktop, no animation needed |
+| Menu icon missing or in wrong position | Place ☰ menu icon to the **left of the logo** in the header, not to the right or standalone |
+| Sidebar toggle folds sidebar on TOC link click | Do NOT fold sidebar when a TOC link is clicked — sidebar state is controlled only by the menu icon |
+| Sidebar fold state not persisted | Persist sidebar fold state in `localStorage` so preference survives page reloads |
+| Sidebar toggle has no animation | Use CSS `transition` on `transform` or `margin-left` for smooth fold/unfold animation |
 | Fixed header covers anchor target on TOC click | Intercept TOC link clicks with JS, use `window.scrollTo()` with manual offset (header 64px + 16px padding) |
 | Anchor offset only uses CSS scroll-margin-top | CSS-only approach doesn't handle dynamic header height changes — add JS interception as primary method, CSS as fallback |

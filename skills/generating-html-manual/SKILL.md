@@ -29,7 +29,7 @@ Convert a Markdown user manual into a self-contained, styled HTML page with side
 This skill generates a standalone single HTML webpage. **HTML code generation (Steps 3-4) MUST follow the superpowers TDD cycle:**
 
 1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
-   - Correct heading hierarchy and ID slugs
+   - Correct heading hierarchy and ID slugs (anchor IDs follow `上级标题-小节标题` format without heading numbers)
    - TOC link targets resolve to valid heading IDs
    - Sidebar toggle behavior — menu icon (☰) positioned left of the logo in the header toggles sidebar fold/unfold; sidebar defaults to visible (280px width), content area expands when sidebar is folded; toggle works at all screen sizes
    - Anchor scroll offset prevents fixed header from hiding targets
@@ -126,7 +126,14 @@ message: feat: ...
 
 **Skip screenshot index table:** If the markdown ends with a screenshot index table (a section titled "截图索引"、"截图索引表"、"Screenshot Index" or similar, containing a table that maps screenshot placeholders to file paths), **omit this entire section from the HTML output**. This table is a build-time reference for tracking which screenshots exist — it is not end-user content and does not belong in the published manual.
 
-**Heading ID slugs:** Generate from heading text — lowercase, replace spaces/special chars with hyphens, ensure uniqueness by appending `-2`, `-3` etc. for duplicates.
+**Heading ID slugs (锚点名称格式):** Generate anchor IDs from heading text using the format `上级标题-小节标题` (parent heading - child heading), with Chinese characters kept as-is:
+
+- **`h2` headings**: Use the heading text directly as the anchor name, stripping leading numbers and separators. Examples: `常见问题解答`, `欢迎使用`, `系统登录`
+- **`h3` headings**: Use `上级h2标题-当前h3标题` format (parent heading text - child heading text), stripping all heading numbers. Examples: `系统登录-登录系统`, `数据报告-访问日志`, `用户管理-角色权限`
+- **`h4+` headings**: Continue chaining: `上级h2-上级h3-当前标题` format (e.g., `系统设置-安全配置-密码策略`)
+- **Do NOT include heading numbers** (like `1.1`, `2.3.1`, `01_`, `1、`, etc.) in anchor names — strip them entirely
+- Replace spaces with hyphens; remove punctuation marks (colons `:`、`：`, brackets `（）`, quotation marks `""`、`「」`, periods `。`, commas `，`、`,`)
+- Ensure uniqueness by appending `-2`, `-3` etc. for duplicates
 
 **Media path rewrite:** All media references in the HTML must point to `media/` relative path.
 
@@ -251,7 +258,7 @@ Build the sidebar TOC from parsed headings:
 - Include only `h2` and `h3` headings in the TOC
 - Skip `h1` (it's the title in the header) and `h4+` (too deep for sidebar)
 - Use `.toc-h2` class for `##` headings, `.toc-h3` class for `###` headings
-- Generate URL-friendly slugs: lowercase, Chinese characters kept as-is, spaces to `-`, remove punctuation
+- Generate anchor IDs: `上级标题-小节标题` format (parent heading - child heading), Chinese characters kept as-is, spaces to `-`, remove heading numbers and punctuation. See Heading ID slugs in Step 3 for full rules.
 - Each TOC item is an `<li>` containing an `<a>` linking to the heading's `id`
 
 ## Callout Conversion
@@ -382,3 +389,5 @@ graph TD
 | Fixed header covers anchor target on TOC click | Intercept TOC link clicks with JS, use `window.scrollTo()` with manual offset (header 64px + 16px padding) |
 | Anchor offset only uses CSS scroll-margin-top | CSS-only approach doesn't handle dynamic header height changes — add JS interception as primary method, CSS as fallback |
 | Anchor code block rendered in HTML output | The `anchor` fenced code block is git metadata — strip it from HTML output entirely, just like TOC and screenshot index sections |
+| Anchor IDs contain heading numbers (e.g., `1.1-系统登录`, `01_常见问题`) | Remove all heading numbers — anchors use clean `上级标题-小节标题` text only, e.g., `系统登录-登录系统` |
+| Anchor IDs are in English/pinyin instead of Chinese | Keep Chinese heading text as-is in anchor IDs — do NOT transliterate to pinyin or English |

@@ -101,7 +101,7 @@ Convert the markdown content to well-structured HTML following these rules:
 | `**bold**` | `<strong>bold</strong>` |
 | `> **note**: text` | `<blockquote>` with `.callout-tip` class |
 | `> **warning**: text` | `<blockquote>` with `.callout-warning` class |
-| `![alt](path)` | `<figure><img><figcaption>` structure, `max-width` capped at fixed value |
+| `![alt](path)` | `<figure><img><figcaption>` structure, `max-width` capped at 720px |
 | `【图X：...】` | `<figure>` with `.screenshot-placeholder` class; placeholder text rendered as small caption **below** the image |
 | Tables | Standard `<table>` with `<thead>` and `<tbody>` |
 | `1. item` | `<ol><li>item</li></ol>` |
@@ -137,7 +137,7 @@ message: feat: ...
 
 **Media path rewrite:** All media references in the HTML must point to `media/` relative path.
 
-**Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must have a fixed height: `height: 450px; object-fit: contain; object-position: center; max-width: 600px; width: 100%`. This ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
+**Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must use a fixed height with wide aspect ratio (5:8 = height:width, matching 1200×1920px source screenshots): `height: 450px; object-fit: contain; object-position: center; max-width: 720px; width: 100%`. The `height: 450px` ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `max-width: 720px` matches the 5:8 ratio (450 × 8/5 = 720), giving screenshots a landscape/widescreen display. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
 
 **Image opacity — CRITICAL: All images must be fully opaque.** NEVER apply `opacity` CSS to any `<img>`, `<figure>`, or image container element. Images (screenshots, diagrams, icons, logos) must always render at 100% opacity (`opacity: 1`). Specifically forbidden:
 - `opacity: 0.X` or `opacity: X%` on `<img>`, `<figure>`, or any parent that wraps images
@@ -369,7 +369,7 @@ graph TD
 | Large images not optimized | Consider warning user if images exceed 2MB |
 | Missing print styles | Include `@media print` to hide navigation elements |
 | Horizontal logo on dark background | Logo text is black — header/footer must be white/light |
-| Screenshot images too large | Set `max-width: 600px` on all `<figure>` images |
+| Screenshot images too large | Set `max-width: 720px; height: 450px` on all `<figure>` images (5:8 ratio, matching 1200×1920 source) |
 | Screenshot caption too long (detailed description) | Shorten to ≤10 characters after `图X：` — captions are labels, not image descriptions |
 | Placeholder text above image | Place `【图X：...】` caption below image as `<figcaption>` |
 | Dark text on dark background | Use white/light text on any dark-colored element |
@@ -378,7 +378,7 @@ graph TD
 | Outputting raw Mermaid code in HTML | Convert ```` ```mermaid ```` blocks to `<pre class="mermaid">` with CDN + initialization |
 | Button icon descriptions not converted to tables | Detect "图标说明" sections by content (icon-description text + image links), not by markdown format. Convert to clean 2-column tables (图标 \| 名称) with `.icon-inline` class |
 | Anchor scroll hidden behind fixed header | Add `scroll-margin-top: 80px` to all `h2` and `h3` headings |
-| Lazy images shift anchor scroll position | Give screenshot `<img>` explicit `width`/`height` attrs + CSS `height: 450px; object-fit: contain` |
+| Lazy images shift anchor scroll position | Give screenshot `<img>` explicit `width`/`height` attrs + CSS `height: 450px; max-width: 720px; object-fit: contain` |
 | Images have opacity applied (semi-transparent) | All images must be fully opaque — NEVER apply `opacity`, `transition: opacity`, or `:hover { opacity }` to `<img>`, `<figure>`, or image containers |
 | Mermaid diagram different height than screenshots | Give `<pre class="mermaid">` `height: 450px` to match screenshot height |
 | Mermaid diagram top clipped with flex | Use `display: block` (NOT `display: flex`) on `<pre class="mermaid">` to avoid overflow clipping |

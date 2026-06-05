@@ -126,9 +126,9 @@ digraph generate_flow {
   "Capture git info (branch, commit, message)" [shape=box];
   "Extract version name from source" [shape=box];
   "Version found?" [shape=diamond];
-  "Ask user to confirm version" [shape=box];
-  "User confirms?" [shape=diamond];
-  "Use commit short hash as version" [shape=box];
+  "Ask user: found/date/provide" [shape=box];
+  "Ask user: date/provide" [shape=box];
+  "User chooses" [shape=box];
   "Analyze project for operation flows" [shape=box];
   "Has visual interface?" [shape=diamond];
   "Is web frontend?" [shape=diamond];
@@ -144,12 +144,11 @@ digraph generate_flow {
   "Git validation passed" -> "Capture git info (branch, commit, message)";
   "Capture git info (branch, commit, message)" -> "Extract version name from source";
   "Extract version name from source" -> "Version found?";
-  "Version found?" -> "Ask user to confirm version" [label="yes"];
-  "Version found?" -> "Use commit short hash as version" [label="no"];
-  "Ask user to confirm version" -> "User confirms?";
-  "User confirms?" -> "Analyze project for operation flows" [label="yes"];
-  "User confirms?" -> "Use commit short hash as version" [label="no (refuse)"];
-  "Use commit short hash as version" -> "Analyze project for operation flows";
+  "Version found?" -> "Ask user: found/date/provide" [label="yes"];
+  "Version found?" -> "Ask user: date/provide" [label="no"];
+  "Ask user: found/date/provide" -> "User chooses";
+  "Ask user: date/provide" -> "User chooses";
+  "User chooses" -> "Analyze project for operation flows";
   "Analyze project for operation flows" -> "Has visual interface?";
   "Has visual interface?" -> "Is web frontend?" [label="yes"];
   "Has visual interface?" -> "Generate manual without placeholders + anchor" [label="no"];
@@ -180,15 +179,23 @@ Try to find a human-readable version name from the source code. Common locations
 - `CHANGELOG.md`, `RELEASES.md`, or release notes
 - Git tags (`git tag --sort=-version:refname | head -5`)
 
-**If version name found:** Ask user to confirm with `AskUserQuestion`:
+**If version name found:** Ask user to choose with `AskUserQuestion`:
 
-> 在源代码中找到了版本名称：**V2.3.0**（来源：[file path or config key]）。请确认这是否正确？
+> 在源代码中找到了版本名称：**V2.3.0**（来源：[file path or config key]）。请选择要使用的版本名称：
 
-Options: "确认，版本正确" / "版本不对，我来提供"
+Options: "使用找到的版本（V2.3.0）" / "使用日期版本名（vYYMMDD-HHmmss）" / "我提供另一个版本名"
 
-**If version name NOT found:** Use the short commit hash (first 7 characters) as the version identifier. No need to ask the user — proceed directly.
+- If user chooses 日期版本名: generate current date-time version in format `vYYMMDD-HHmmss` (e.g., `v260604-153021`).
+- If user chooses 我提供另一个版本名: prompt user to input the desired version name.
 
-> 未在源代码中找到明确的版本名称，将使用 commit 短哈希 `abc1234` 作为版本标识。
+**If version name NOT found:** Ask user to choose with `AskUserQuestion`:
+
+> 未在源代码中找到明确的版本名称。请选择要使用的版本名称：
+
+Options: "使用日期版本名（vYYMMDD-HHmmss）" / "我提供版本名"
+
+- If user chooses 日期版本名: generate current date-time version in format `vYYMMDD-HHmmss`.
+- If user chooses 我提供版本名: prompt user to input the desired version name.
 
 ### Step 2: Analyze Project for Operation Flows
 

@@ -29,7 +29,7 @@ Convert a Markdown user manual into a self-contained, styled HTML page with side
 This skill generates a standalone single HTML webpage. **HTML code generation (Steps 3-4) MUST follow the superpowers TDD cycle:**
 
 1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
-   - Correct heading hierarchy and ID slugs (anchor IDs follow `上级标题-小节标题` format without heading numbers)
+   - Correct heading hierarchy and ID slugs (anchor IDs are lowercase English words with hyphen separators, e.g., `system-settings-export-path`; Chinese titles are translated to English for anchors)
    - TOC link targets resolve to valid heading IDs
    - Sidebar toggle behavior — menu icon (☰) positioned left of the logo in the header toggles sidebar fold/unfold; sidebar defaults to visible (280px width), content area expands when sidebar is folded; toggle works at all screen sizes
    - Anchor scroll offset prevents fixed header from hiding targets
@@ -126,13 +126,14 @@ message: feat: ...
 
 **Skip screenshot index table:** If the markdown ends with a screenshot index table (a section titled "截图索引"、"截图索引表"、"Screenshot Index" or similar, containing a table that maps screenshot placeholders to file paths), **omit this entire section from the HTML output**. This table is a build-time reference for tracking which screenshots exist — it is not end-user content and does not belong in the published manual.
 
-**Heading ID slugs (锚点名称格式):** Generate anchor IDs from heading text using the format `上级标题-小节标题` (parent heading - child heading), with Chinese characters kept as-is:
+**Heading ID slugs (锚点名称格式):** Generate anchor IDs as **lowercase English words separated by short dashes** (`-`). Chinese titles must be translated to English for anchor generation. Different levels of headings are also separated by short dashes.
 
-- **`h2` headings**: Use the heading text directly as the anchor name, stripping leading numbers and separators. Examples: `常见问题解答`, `欢迎使用`, `系统登录`
-- **`h3` headings**: Use `上级h2标题-当前h3标题` format (parent heading text - child heading text), stripping all heading numbers. Examples: `系统登录-登录系统`, `数据报告-访问日志`, `用户管理-角色权限`
-- **`h4+` headings**: Continue chaining: `上级h2-上级h3-当前标题` format (e.g., `系统设置-安全配置-密码策略`)
+- **`h2` headings**: Translate the heading text to lowercase English, using hyphens between words. Examples: `login-page`, `faq`, `system-settings`, `user-management`
+- **`h3` headings**: Use `parent-heading-current-heading` format (parent h2's English anchor - current h3's English text), all lowercase with hyphens. Examples: `system-settings-export-path`, `user-management-role-permissions`, `data-reports-access-logs`
+- **`h4+` headings**: Continue chaining: `parent-grandparent-current-heading` format (e.g., `system-settings-security-password-policy`)
 - **Do NOT include heading numbers** (like `1.1`, `2.3.1`, `01_`, `1、`, etc.) in anchor names — strip them entirely
-- Replace spaces with hyphens; remove punctuation marks (colons `:`、`：`, brackets `（）`, quotation marks `""`、`「」`, periods `。`, commas `，`、`,`)
+- **Do NOT keep Chinese characters** in anchors — translate/transliterate to English first, then convert to lowercase hyphenated form
+- Replace spaces with hyphens; remove punctuation marks (colons `:`、`：`, brackets `（）`, quotation marks `""`、`「」`, periods `。`, commas `，`、`,`, slashes `/`)
 - Ensure uniqueness by appending `-2`, `-3` etc. for duplicates
 
 **Media path rewrite:** All media references in the HTML must point to `media/` relative path.
@@ -258,7 +259,7 @@ Build the sidebar TOC from parsed headings:
 - Include only `h2` and `h3` headings in the TOC
 - Skip `h1` (it's the title in the header) and `h4+` (too deep for sidebar)
 - Use `.toc-h2` class for `##` headings, `.toc-h3` class for `###` headings
-- Generate anchor IDs: `上级标题-小节标题` format (parent heading - child heading), Chinese characters kept as-is, spaces to `-`, remove heading numbers and punctuation. See Heading ID slugs in Step 3 for full rules.
+- Generate anchor IDs: lowercase English words with hyphen separators, with heading levels chained by hyphens. Chinese titles must be translated to English first (e.g., "系统设置 > 导出路径" → `system-settings-export-path`). See Heading ID slugs in Step 3 for full rules.
 - Each TOC item is an `<li>` containing an `<a>` linking to the heading's `id`
 
 ## Callout Conversion
@@ -389,5 +390,6 @@ graph TD
 | Fixed header covers anchor target on TOC click | Intercept TOC link clicks with JS, use `window.scrollTo()` with manual offset (header 64px + 16px padding) |
 | Anchor offset only uses CSS scroll-margin-top | CSS-only approach doesn't handle dynamic header height changes — add JS interception as primary method, CSS as fallback |
 | Anchor code block rendered in HTML output | The `anchor` fenced code block is git metadata — strip it from HTML output entirely, just like TOC and screenshot index sections |
-| Anchor IDs contain heading numbers (e.g., `1.1-系统登录`, `01_常见问题`) | Remove all heading numbers — anchors use clean `上级标题-小节标题` text only, e.g., `系统登录-登录系统` |
-| Anchor IDs are in English/pinyin instead of Chinese | Keep Chinese heading text as-is in anchor IDs — do NOT transliterate to pinyin or English |
+| Anchor IDs contain heading numbers (e.g., `1.1-login`, `01_faq`) | Remove all heading numbers — anchors use clean lowercase English text only, e.g., `login`, `faq` |
+| Anchor IDs use Chinese characters (e.g., `系统登录-登录系统`) | Translate Chinese headings to English for anchor IDs: use lowercase English words with hyphen separators, e.g., `system-login-login-system` |
+| Anchor IDs use pinyin (e.g., `xi-tong-deng-lu`) | Translate Chinese headings to actual English words, not pinyin — e.g., `system-login` not `xi-tong-deng-lu` |

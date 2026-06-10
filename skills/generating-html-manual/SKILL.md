@@ -42,7 +42,7 @@ This skill generates an HTML page with external CSS/JS/i18n files. Content text 
    - URL `?lang=` parameter correctly sets language on page load (priority: URL > localStorage > default)
    - Combined `#anchor` + `?lang=` URL applies language first, then scrolls to anchor target
    - Anchor IDs never contain non-English characters (no pinyin, no Cyrillic, no Kanji, no Hangul, no Arabic script)
-   - Language switcher click updates URL `?lang=` parameter without full page reload (`history.replaceState`)
+   - Language switcher dropdown change updates URL `?lang=` parameter without full page reload (`history.replaceState`)
    - `index.html` contains ONLY page layout (header, sidebar shell, content/toc containers, footer) — NO hardcoded manual content text
    - `i18n/content-{lang}.js` files exist for each language (e.g., `i18n/content-zh.js`, `i18n/content-en.js`) — each exports `I18N_CONTENT['{lang}']` with `body` and `toc` HTML strings
    - `switchLanguage()` injects `I18N_CONTENT[lang].body` into `#content-container` and `I18N_CONTENT[lang].toc` into `#toc-container` via `innerHTML`
@@ -54,6 +54,7 @@ This skill generates an HTML page with external CSS/JS/i18n files. Content text 
    - Sidebar toggle button has NO `data-i18n` attribute and NO translatable text (pure icon)
    - Back-to-top button has NO `data-i18n` attribute and NO translatable text (pure icon)
    - All UI chrome text has `data-i18n` with translations (header-title, toc-title, footer-copyright, lang-switcher-label)
+   - Language switcher is a `<select>` dropdown with `.lang-switch-select` class; each `<option>` shows flag emoji + language name (e.g., `🇨🇳 简体中文`, `🇺🇸 English`)
    - Header title bar text switches on language change — `<span data-i18n="header-title">` in the header with translations in every `i18n/{lang}.js` file
    - No `fold-sidebar`, `expand-sidebar`, or `back-to-top` keys exist in any i18n file
    - Default language content file is generated FIRST; other languages reuse the same anchor IDs by positional mapping
@@ -284,7 +285,7 @@ All external files are referenced from `index.html` using relative paths (e.g., 
 
 #### Page Structure
 
-- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title (`<span data-i18n="header-title">`), and version string. The menu icon toggles the sidebar fold/unfold. The page title text is translated via `data-i18n` — each language file provides its own `header-title` value. When multi-language is active (`LANGS` has >1 item), a **language switcher widget** sits in the **top-right corner** of the header.
+- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title (`<span data-i18n="header-title">`), and version string. The menu icon toggles the sidebar fold/unfold. The page title text is translated via `data-i18n` — each language file provides its own `header-title` value. When multi-language is active (`LANGS` has >1 item), a **language switcher dropdown** sits in the **top-right corner** of the header.
 - **Sidebar** — fixed left navigation. Defaults to visible (280px width). Contains a `<div id="toc-container">` populated by JS with the current language's TOC HTML. When folded, the content area expands.
 - **Content** — main body area with max-width 900px, centered. Contains a `<div id="content-container">` populated by JS with the current language's body HTML. Has `margin-left: 280px` when sidebar is visible.
 - **Footer** — company logo and copyright
@@ -302,13 +303,13 @@ All external files are referenced from `index.html` using relative paths (e.g., 
 | `{{LANGS_LIST}}` | Full `LANGS` string (e.g., `zh,en,ru`) — used for language switcher |
 | `{{UI_I18N_SCRIPTS}}` | `<script>` tags loading UI chrome i18n files (`i18n/zh.js`, `i18n/en.js`). Empty if single-language. |
 | `{{CONTENT_SCRIPTS}}` | `<script>` tags loading content files (`i18n/content-zh.js`, `i18n/content-en.js`). Empty if single-language. |
-| `{{LANG_SWITCHER}}` | HTML for language switcher button row (empty if single-language) |
+| `{{LANG_SWITCHER}}` | HTML for language switcher dropdown select (empty if single-language) |
 
 #### Layout Specs
 
 | Element | Spec |
 |---------|------|
-| Header height | 64px, fixed top, `z-index: 1000`. Contains menu toggle **icon button** (☰, no text) on the far left, then logo, title, version. The icon button uses only the ☰ Unicode character (or equivalent SVG icon) with no visible text label — it is a pure icon. When multi-language: language switcher buttons at the far right. |
+| Header height | 64px, fixed top, `z-index: 1000`. Contains menu toggle **icon button** (☰, no text) on the far left, then logo, title, version. The icon button uses only the ☰ Unicode character (or equivalent SVG icon) with no visible text label — it is a pure icon. When multi-language: language switcher dropdown at the far right. |
 | Sidebar width | 280px, fixed left, `z-index: 900`. Defaults to visible. Toggled by the header menu icon. TOC list items MUST have `list-style: none` (no bullet points). Use CSS `transition` on `transform` or `margin-left` for smooth fold/unfold animation. |
 | Content max-width | 900px, centered. Content area has `margin-left: 280px` when sidebar is visible; transitions to `margin-left: 0` (or auto-centered) when sidebar is folded. |
 | Anchor scroll offset | CSS: `scroll-margin-top: 80px` on all `h2`/`h3`. JS: intercept TOC link clicks, call `scrollIntoView()` with manual offset for the 64px header + 16px breathing room |
@@ -544,10 +545,52 @@ When `LANGS` contains more than one language (comma-separated), the generated HT
 When multi-language is active, add a language switcher in the **top-right corner of the header**:
 
 - **Position:** Inside the header bar, right-aligned. Displayed to the right of the version string, before any other controls.
-- **Appearance:** A row of compact language-code buttons (e.g., `ZH` `EN` `RU`). Each button has the `.lang-switch-btn` class. The active language button uses the accent color (`var(--accent-700)`) as background or border to distinguish it.
-- **Interaction:** Clicking a button switches the page language immediately. Persist the choice in `localStorage` (key: `manual-lang`).
-- **On page load:** Read `localStorage` for saved preference; fall back to the first language in `LANGS` (the default).
-- **Style notes:** Buttons should be compact (`font-size: 0.75rem; padding: 2px 6px; border-radius: 3px`), with a subtle border (`1px solid var(--neutral-200)`). Active button gets `background: var(--accent-700); color: #fff; border-color: var(--accent-700)`.
+- **Appearance:** A `<select>` dropdown control (`.lang-switch-select`). Each `<option>` displays the flag emoji on the left and the language name on the right (e.g., `🇨🇳 简体中文`, `🇺🇸 English`, `🇷🇺 русский язык`).
+- **Flag + Language Name mapping:**
+
+| Language Code | Flag Emoji | Display Name |
+|--------------|------------|--------------|
+| `zh` | 🇨🇳 | 简体中文 |
+| `en` | 🇺🇸 | English |
+| `ru` | 🇷🇺 | русский язык |
+| `ja` | 🇯🇵 | 日本語 |
+| `ko` | 🇰🇷 | 한국어 |
+| `fr` | 🇫🇷 | Français |
+| `de` | 🇩🇪 | Deutsch |
+| `es` | 🇪🇸 | Español |
+| `pt` | 🇵🇹 | Português |
+| `ar` | 🇸🇦 | العربية |
+
+- **Interaction:** Selecting an option from the dropdown switches the page language immediately. Persist the choice in `localStorage` (key: `manual-lang`).
+- **On page load:** Read `localStorage` for saved preference; fall back to the first language in `LANGS` (the default). Set the `<select>` value to match the active language.
+- **Style notes:** The `<select>` should be compact (`font-size: 0.8rem; padding: 2px 6px; border-radius: 4px`), with a subtle border (`1px solid var(--neutral-300)`), and background matching the header (`var(--neutral-100)` or `#fff`). The right side of the select (the dropdown arrow area) should use `appearance: auto` (browser-native dropdown arrow). On focus, use a subtle outline matching the accent color.
+
+**Select HTML markup** for `{{LANG_SWITCHER}}` (generated in `index.html`):
+
+```html
+<label data-i18n="lang-switcher-label" for="lang-select" class="lang-switch-label">语言</label>
+<select id="lang-select" class="lang-switch-select">
+  <option value="zh">🇨🇳 简体中文</option>
+  <option value="en">🇺🇸 English</option>
+  <option value="ru">🇷🇺 русский язык</option>
+</select>
+```
+
+Only include `<option>` elements for languages present in `LANGS`. The `<label>` uses `data-i18n` — each `i18n/{lang}.js` file provides the `lang-switcher-label` translation (e.g., "语言", "Language", "Язык").
+
+**Flag and name data in JS** (in `scripts/main.js`, for use by `switchLanguage()` to validate and set the select value):
+
+```javascript
+// Language display metadata (flag emoji + native name)
+const LANG_FLAGS = {
+  zh: '🇨🇳', en: '🇺🇸', ru: '🇷🇺', ja: '🇯🇵', ko: '🇰🇷',
+  fr: '🇫🇷', de: '🇩🇪', es: '🇪🇸', pt: '🇵🇹', ar: '🇸🇦'
+};
+const LANG_NAMES = {
+  zh: '简体中文', en: 'English', ru: 'русский язык', ja: '日本語', ko: '한국어',
+  fr: 'Français', de: 'Deutsch', es: 'Español', pt: 'Português', ar: 'العربية'
+};
+```
 
 ### URL Language Parameter (`?lang=`)
 
@@ -724,9 +767,9 @@ async function switchLanguage(lang) {
   const url = new URL(window.location);
   url.searchParams.set('lang', lang);
   window.history.replaceState({}, '', url);
-  document.querySelectorAll('.lang-switch-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.lang === lang);
-  });
+  // Update dropdown select value
+  const select = document.querySelector('.lang-switch-select');
+  if (select) select.value = lang;
 }
 
 function getUrlLang() {
@@ -793,6 +836,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await switchLanguage(lang);
   initSidebarToggle();
   initBackToTop();
+
+  // Language select dropdown change handler
+  const langSelect = document.querySelector('.lang-switch-select');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      switchLanguage(e.target.value);
+    });
+  }
 
   // Anchor scroll AFTER content + Mermaid are fully rendered
   if (window.location.hash) {
@@ -966,7 +1017,7 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | Language selection not asked before HTML generation | Step 0 is MANDATORY — always ask the user for language preferences before any other work |
 | i18n not implemented when `LANGS` has multiple languages | When `LANGS` contains a comma, implement full `data-i18n` + language switcher + i18n external files |
 | Language switcher missing or in wrong position | Language switcher must be in the **top-right corner of the header**, to the right of the version string |
-| Language switcher uses dropdown instead of button row | Use a row of compact language-code buttons (`ZH` `EN` `RU`), not a `<select>` dropdown |
+| Language switcher uses buttons instead of dropdown select | Use a `<select>` dropdown (`.lang-switch-select`) with `<option>` elements. Each option shows flag emoji on the left and language name on the right (e.g., `🇨🇳 简体中文`, `🇺🇸 English`) |
 | Language preference not persisted across page loads | Save to `localStorage` (key: `manual-lang`) and restore on page load |
 | Chinese company name in non-Chinese translations | `研知教育科技` ONLY in `zh`. All non-Chinese versions use `WisQuest EdTech` |
 | Chinese characters appear in non-Chinese i18n strings | Verify every non-Chinese translation value contains no 汉字 — use only the target language's script |

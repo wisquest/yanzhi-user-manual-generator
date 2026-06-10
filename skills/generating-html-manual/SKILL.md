@@ -13,7 +13,7 @@ Convert a Markdown user manual into a self-contained, styled HTML page with side
 
 - User provides a Markdown user manual (`.md` file) and wants an HTML version
 - User asks to "convert manual to HTML", "generate HTML manual", "转HTML", "生成HTML手册"
-- Default language: **Simplified Chinese** unless user specifies otherwise
+- Before generating HTML, you MUST ask the user to select languages (Step 0). Default: Simplified Chinese only if the user confirms it.
 
 ## Prerequisites
 
@@ -51,28 +51,52 @@ This skill generates a standalone single HTML webpage. **HTML code generation (S
 
 ```dot
 digraph html_manual {
+  "Ask user for language selection" [shape=box];
   "Read markdown input" [shape=box];
   "Parse headings for TOC" [shape=box];
   "Identify media references" [shape=box];
   "Generate output folder" [shape=box];
   "Copy media files to output folder" [shape=box];
   "Convert markdown to HTML body" [shape=box];
-  "Apply HTML template with sidebar + branding" [shape=box];
+  "Apply HTML template with sidebar + branding + i18n" [shape=box];
   "Write index.html to output folder" [shape=box];
   "Verify all media paths are valid" [shape=box];
   "Done" [shape=doublecircle];
 
+  "Ask user for language selection" -> "Read markdown input";
   "Read markdown input" -> "Parse headings for TOC";
   "Parse headings for TOC" -> "Identify media references";
   "Identify media references" -> "Generate output folder";
   "Generate output folder" -> "Copy media files to output folder";
   "Copy media files to output folder" -> "Convert markdown to HTML body";
-  "Convert markdown to HTML body" -> "Apply HTML template with sidebar + branding";
-  "Apply HTML template with sidebar + branding" -> "Write index.html to output folder";
+  "Convert markdown to HTML body" -> "Apply HTML template with sidebar + branding + i18n";
+  "Apply HTML template with sidebar + branding + i18n" -> "Write index.html to output folder";
   "Write index.html to output folder" -> "Verify all media paths are valid";
   "Verify all media paths are valid" -> "Done";
 }
 ```
+
+### Step 0: Language Selection (MANDATORY)
+
+**Before any HTML generation begins**, you MUST ask the user which languages the HTML manual should support. Present these options:
+
+1. **仅支持简体中文** (Only Simplified Chinese)
+2. **支持简体中文、英文、俄语** (Simplified Chinese, English, Russian)
+3. **自定义语言** (Custom — user specifies which languages to support)
+
+Save the user's choice as the `LANGS` variable. Format: **comma-separated language codes** (no spaces between items).
+
+| Choice | `LANGS` value |
+|--------|---------------|
+| 1 (仅中文) | `zh` |
+| 2 (中英俄) | `zh,en,ru` |
+| 3 (自定义) | User-specified codes, e.g., `zh,ja,ko` or `en,zh` |
+
+Supported language codes: `zh` (Simplified Chinese), `en` (English), `ru` (Russian), `ja` (Japanese), `ko` (Korean), `fr` (French), `de` (German), `es` (Spanish), `pt` (Portuguese), `ar` (Arabic).
+
+**If `LANGS` contains more than one language** (i.e., the string contains a comma), the HTML page MUST include full multi-language switching support. See the [Multi-Language Support](#multi-language-support) section for implementation details.
+
+**If `LANGS` has only one language** (e.g., `zh`), skip all i18n — generate a single-language page as before. The single language becomes the page language and all UI chrome uses that language.
 
 ### Step 1: Read and Parse
 
@@ -178,7 +202,7 @@ Generate a complete standalone HTML page with the following structure and design
 
 #### Page Structure
 
-- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title, and version string. The menu icon toggles the sidebar fold/unfold.
+- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title, and version string. The menu icon toggles the sidebar fold/unfold. When multi-language is active (`LANGS` has >1 item), a **language switcher widget** sits in the **top-right corner** of the header (to the right of the version string).
 - **Sidebar** — fixed left navigation with TOC. Defaults to visible (280px width). Can be folded/unfolded via the menu icon in the header. When folded, the content area expands to fill the available space.
 - **Content** — main body area with max-width 900px, centered. Content area has `margin-left: 280px` when sidebar is visible; expands to full width when sidebar is folded.
 - **Footer** — company logo and copyright
@@ -192,12 +216,16 @@ Generate a complete standalone HTML page with the following structure and design
 | `{{VERSION}}` | Version string if found (e.g., "V2.3.0"), otherwise empty |
 | `{{CONTENT}}` | Converted HTML body from Step 3 |
 | `{{TOC}}` | Generated sidebar TOC from headings |
+| `{{DEFAULT_LANG}}` | First language code from `LANGS` (e.g., `zh`) — used in JS i18n init |
+| `{{LANGS_LIST}}` | Full `LANGS` string (e.g., `zh,en,ru`) — used to generate language switcher buttons |
+| `{{I18N_OBJECT}}` | Complete JavaScript `I18N` object with translations for all languages in `LANGS` |
+| `{{LANG_SWITCHER}}` | HTML markup for the language switcher button row (empty string if single-language) |
 
 #### Layout Specs
 
 | Element | Spec |
 |---------|------|
-| Header height | 64px, fixed top, `z-index: 1000`. Contains menu toggle icon (☰) on the far left, then logo, title, version. |
+| Header height | 64px, fixed top, `z-index: 1000`. Contains menu toggle icon (☰) on the far left, then logo, title, version. When multi-language: language switcher buttons at the far right. |
 | Sidebar width | 280px, fixed left, `z-index: 900`. Defaults to visible. Toggled by the header menu icon. Use CSS `transition` on `transform` or `margin-left` for smooth fold/unfold animation. |
 | Content max-width | 900px, centered. Content area has `margin-left: 280px` when sidebar is visible; transitions to `margin-left: 0` (or auto-centered) when sidebar is folded. |
 | Anchor scroll offset | CSS: `scroll-margin-top: 80px` on all `h2`/`h3`. JS: intercept TOC link clicks, call `scrollIntoView()` with manual offset for the 64px header + 16px breathing room |
@@ -331,17 +359,145 @@ graph TD
 
 **Company logos:**
 - Always copy all files from `company_style/` to `{output}/media/`
-- Header uses `研知教育科技_horizontal_logo.png`
-- Footer uses `研知教育科技_horizontal_logo_widemargin.png`
+- Header uses `wisquest_horizontal_logo.png`
+- Footer uses `wisquest_horizontal_logo_widemargin.png`
 - Circle logo available for favicon if desired
 - **Horizontal logos have black text — NEVER place them on dark backgrounds.** The header and footer bars must use a light/white background (`#ffffff` or `var(--neutral-100)`) to keep logo text legible
 
-## Language Default
+## Multi-Language Support
 
-- Always use `lang="zh-CN"` on `<html>` tag
-- UI text in Chinese: "目录" (TOC), "返回顶部" (Back to top)
-- Footer copyright in Chinese
-- If user specifies a different language, adapt UI text accordingly
+When `LANGS` contains more than one language (comma-separated), the generated HTML must include a full i18n (internationalization) system. When `LANGS` has only one language, skip all i18n — generate a single-language page directly in that language.
+
+### LANGS Variable
+
+`LANGS` is a comma-separated string of language codes. The **first language** in the list is the **default language** shown on first page load.
+
+| `LANGS` | Languages | i18n Required? |
+|---------|-----------|----------------|
+| `zh` | Simplified Chinese only | ❌ No — single-language page |
+| `zh,en,ru` | Chinese (default), English, Russian | ✅ Yes — full i18n |
+| `en,zh,ja,ko` | English (default), Chinese, Japanese, Korean | ✅ Yes — full i18n |
+
+### Language Switching Widget
+
+When multi-language is active, add a language switcher in the **top-right corner of the header**:
+
+- **Position:** Inside the header bar, right-aligned. Displayed to the right of the version string, before any other controls.
+- **Appearance:** A row of compact language-code buttons (e.g., `ZH` `EN` `RU`). Each button has the `.lang-switch-btn` class. The active language button uses the accent color (`var(--accent-700)`) as background or border to distinguish it.
+- **Interaction:** Clicking a button switches the page language immediately. Persist the choice in `localStorage` (key: `manual-lang`).
+- **On page load:** Read `localStorage` for saved preference; fall back to the first language in `LANGS` (the default).
+- **Style notes:** Buttons should be compact (`font-size: 0.75rem; padding: 2px 6px; border-radius: 3px`), with a subtle border (`1px solid var(--neutral-200)`). Active button gets `background: var(--accent-700); color: #fff; border-color: var(--accent-700)`.
+
+### data-i18n Attributes
+
+All localizable UI chrome text must use `data-i18n` attributes. Each translatable element gets a unique key:
+
+```html
+<span data-i18n="toc-title">目录</span>
+<button data-i18n="back-to-top">返回顶部</button>
+<p data-i18n="footer-copyright">© 2026 研知教育科技 版权所有</p>
+```
+
+The initial text content (before any JS runs) must be in the **default language** (first in `LANGS`). The i18n system replaces it on language switch.
+
+### Translation Map (JavaScript)
+
+Include a JavaScript `I18N` object in the page, mapping every `data-i18n` key to translations for each language in `LANGS`:
+
+```javascript
+const I18N = {
+  zh: {
+    'toc-title': '目录',
+    'back-to-top': '返回顶部',
+    'footer-copyright': '© 2026 研知教育科技 版权所有',
+    'fold-sidebar': '折叠侧边栏',
+    'expand-sidebar': '展开侧边栏',
+    'lang-switcher-label': '语言'
+  },
+  en: {
+    'toc-title': 'Contents',
+    'back-to-top': 'Back to Top',
+    'footer-copyright': '© 2026 WisQuest EdTech. All rights reserved.',
+    'fold-sidebar': 'Collapse Sidebar',
+    'expand-sidebar': 'Expand Sidebar',
+    'lang-switcher-label': 'Language'
+  },
+  ru: {
+    'toc-title': 'Содержание',
+    'back-to-top': 'Наверх',
+    'footer-copyright': '© 2026 WisQuest EdTech. Все права защищены.',
+    'fold-sidebar': 'Свернуть боковую панель',
+    'expand-sidebar': 'Развернуть боковую панель',
+    'lang-switcher-label': 'Язык'
+  }
+};
+```
+
+### Language Switching Implementation
+
+```javascript
+function switchLanguage(lang) {
+  if (!I18N[lang]) return;
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (I18N[lang] && I18N[lang][key]) {
+      el.textContent = I18N[lang][key];
+    }
+  });
+  localStorage.setItem('manual-lang', lang);
+  // Update switcher button active states
+  document.querySelectorAll('.lang-switch-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+}
+
+// On page load: restore preference
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('manual-lang');
+  const defaultLang = '{{DEFAULT_LANG}}'; // first language in LANGS
+  switchLanguage(saved && I18N[saved] ? saved : defaultLang);
+});
+```
+
+Replace `{{DEFAULT_LANG}}` with the first language code from `LANGS` during HTML generation.
+
+### Content Language (Markdown Body)
+
+The markdown content itself (headings, paragraphs, etc.) is in the source language and is **NOT translated automatically** by the i18n system. The i18n system handles only the **UI chrome**:
+
+| Element | i18n? | Notes |
+|---------|-------|-------|
+| Header title | ✅ Yes | `data-i18n` |
+| TOC heading ("目录") | ✅ Yes | `data-i18n` |
+| Back-to-top button | ✅ Yes | `data-i18n` |
+| Footer copyright | ✅ Yes | `data-i18n` |
+| Language switcher labels | ✅ Yes | `data-i18n` |
+| Sidebar toggle aria-label | ✅ Yes | `data-i18n` |
+| Body content (headings, paragraphs) | ❌ No | Original markdown language |
+| Screenshot captions | ❌ No | Original markdown language |
+| Table headers | ❌ No | Original markdown language |
+
+### Company Name Rules
+
+**CRITICAL — Company name must match the active language:**
+
+| Language | Company Name | Footer Copyright |
+|----------|-------------|------------------|
+| `zh` (Chinese) | 研知教育科技 | © 2026 研知教育科技 版权所有 |
+| `en` (English) | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
+| `ru` (Russian) | WisQuest EdTech | © 2026 WisQuest EdTech. Все права защищены. |
+| Any other non-Chinese | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
+
+**Key rule: 研知教育科技 is ONLY used in the Chinese (`zh`) version. All non-Chinese versions MUST use `WisQuest EdTech`.** This applies to footer copyright, page title, and any company name reference in the UI chrome.
+
+### No Chinese in Non-Chinese Content
+
+**CRITICAL:** When generating the i18n translation map for non-Chinese languages:
+- NEVER include Chinese characters (汉字) in English, Russian, or any other non-Chinese translation strings
+- The company name in all non-Chinese versions is `WisQuest EdTech` (English), NOT `研知教育科技`
+- Verify every translation value is in the correct script for that language
+- The `<html lang>` attribute must reflect the current language: `zh-CN` for Chinese, the bare language code otherwise
 
 ## Output Structure
 
@@ -349,11 +505,11 @@ graph TD
 {manual-name}-html/
 ├── index.html          # Complete standalone HTML
 └── media/
-    ├── 图1-登录页面.png
-    ├── 图2-首页概览.png
-    ├── 研知教育科技_horizontal_logo.png
-    ├── 研知教育科技_horizontal_logo_widemargin.png
-    └── 研知教育科技_white_circle_background.png
+    ├── 1-login.png
+    ├── 2-settings.png
+    ├── wisquest_horizontal_logo.png
+    ├── wisquest_horizontal_logo_widemargin.png
+    └── wisquest_white_circle_background.png
 ```
 
 ## Common Mistakes
@@ -393,3 +549,12 @@ graph TD
 | Anchor IDs contain heading numbers (e.g., `1.1-login`, `01_faq`) | Remove all heading numbers — anchors use clean lowercase English text only, e.g., `login`, `faq` |
 | Anchor IDs use Chinese characters (e.g., `系统登录-登录系统`) | Translate Chinese headings to English for anchor IDs: use lowercase English words with hyphen separators, e.g., `system-login-login-system` |
 | Anchor IDs use pinyin (e.g., `xi-tong-deng-lu`) | Translate Chinese headings to actual English words, not pinyin — e.g., `system-login` not `xi-tong-deng-lu` |
+| Language selection not asked before HTML generation | Step 0 is MANDATORY — always ask the user for language preferences before any other work |
+| i18n not implemented when `LANGS` has multiple languages | When `LANGS` contains a comma, implement full `data-i18n` + language switcher + translation map |
+| Language switcher missing or in wrong position | Language switcher must be in the **top-right corner of the header**, to the right of the version string |
+| Language switcher uses dropdown instead of button row | Use a row of compact language-code buttons (`ZH` `EN` `RU`), not a `<select>` dropdown |
+| Language preference not persisted across page loads | Save to `localStorage` (key: `manual-lang`) and restore on page load |
+| Chinese company name in non-Chinese translations | `研知教育科技` ONLY in `zh`. All non-Chinese versions use `WisQuest EdTech` |
+| Chinese characters appear in non-Chinese i18n strings | Verify every non-Chinese translation value contains no 汉字 — use only the target language's script |
+| `<html lang>` not updated on language switch | Update `document.documentElement.lang` when switching languages |
+| `data-i18n` initial text not in default language | The HTML body's initial text content must match the default language (first in `LANGS`) |

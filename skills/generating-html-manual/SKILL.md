@@ -110,9 +110,15 @@ Supported language codes: `zh` (Simplified Chinese), `en` (English), `ru` (Russi
 ### Step 2: Create Output Folder
 
 1. Create a new folder next to the input markdown file, named `{manual-name}-html/`
-2. Create `media/` subfolder inside it for copied assets
-3. Copy all referenced media files from their original locations to `media/`
-4. Copy the company logo files from this skill's `company_style/` directory to `media/`
+2. Create the `media/` directory structure based on language count:
+   - **Single-language** (`LANGS` has 1 item, e.g., `zh`): Create one `media/` subfolder
+   - **Multi-language** (`LANGS` has >1 item, e.g., `zh,en,ru`): Create `media/{lang}/` subfolder for **each** language in `LANGS` (e.g., `media/zh/`, `media/en/`, `media/ru/`)
+3. Copy all referenced media files (screenshots, diagrams, etc.):
+   - **Single-language:** Copy to `media/` directly
+   - **Multi-language:** Copy each media file to **ALL** language subfolders (e.g., `1-login.png` → `media/zh/1-login.png` + `media/en/1-login.png` + `media/ru/1-login.png`). Screenshots are identical across languages — this isolation ensures each language has its own complete media set.
+4. Copy the company logo files from this skill's `company_style/` directory:
+   - **Single-language:** Copy to `media/`
+   - **Multi-language:** Copy to **ALL** language subfolders (e.g., `media/zh/`, `media/en/`, `media/ru/`)
 
 ### Step 3: Convert Markdown to HTML
 
@@ -160,7 +166,9 @@ message: feat: ...
 - Replace spaces with hyphens; remove punctuation marks (colons `:`、`：`, brackets `（）`, quotation marks `""`、`「」`, periods `。`, commas `，`、`,`, slashes `/`)
 - Ensure uniqueness by appending `-2`, `-3` etc. for duplicates
 
-**Media path rewrite:** All media references in the HTML must point to `media/` relative path.
+**Media path rewrite:** All media references in the HTML must use relative paths:
+- **Single-language:** `media/{filename}`
+- **Multi-language:** `media/{DEFAULT_LANG}/{filename}` (where `{DEFAULT_LANG}` is the first language code in `LANGS`)
 
 **Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must use a fixed height with wide aspect ratio (5:8 = height:width, matching 1200×1920px source screenshots): `height: 450px; object-fit: contain; object-position: center; max-width: 720px; width: 100%`. The `height: 450px` ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `max-width: 720px` matches the 5:8 ratio (450 × 8/5 = 720), giving screenshots a landscape/widescreen display. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
 
@@ -350,15 +358,22 @@ graph TD
 1. Find all `![alt](path)` in the markdown
 2. Resolve relative paths from the markdown file's location
 3. Copy each image to `{output}/media/{filename}`
-4. Rewrite the `<img src>` to `media/{filename}` in HTML
+4. Rewrite the `<img src>` in HTML:
+   - **Single-language:** `media/{filename}`
+   - **Multi-language:** `media/{DEFAULT_LANG}/{filename}` where `{DEFAULT_LANG}` is the first language in `LANGS`
 
 **Non-image files (PDFs, docs):**
 
 1. Same copy-to-media process
-2. Rewrite link `href` to `media/{filename}`
+2. Rewrite link `href`:
+   - **Single-language:** `media/{filename}`
+   - **Multi-language:** `media/{DEFAULT_LANG}/{filename}`
 
 **Company logos:**
-- Always copy all files from `company_style/` to `{output}/media/`
+- Always copy all files from `company_style/` to the `media/` directory:
+  - **Single-language:** `{output}/media/`
+  - **Multi-language:** ALL language subfolders (`{output}/media/zh/`, `{output}/media/en/`, etc.)
+- In HTML, reference logos from `media/` (single-lang) or `media/{DEFAULT_LANG}/` (multi-lang)
 - Header uses `wisquest_horizontal_logo.png`
 - Footer uses `wisquest_horizontal_logo_widemargin.png`
 - Circle logo available for favicon if desired
@@ -501,16 +516,42 @@ The markdown content itself (headings, paragraphs, etc.) is in the source langua
 
 ## Output Structure
 
+**Single-language** (`LANGS=zh`):
+
 ```
 {manual-name}-html/
 ├── index.html          # Complete standalone HTML
-└── media/
+└── media/              # Flat media directory
     ├── 1-login.png
     ├── 2-settings.png
     ├── wisquest_horizontal_logo.png
     ├── wisquest_horizontal_logo_widemargin.png
     └── wisquest_white_circle_background.png
 ```
+
+**Multi-language** (`LANGS=zh,en,ru` — media isolated per language):
+
+```
+{manual-name}-html/
+├── index.html          # Complete standalone HTML with i18n
+└── media/
+    ├── zh/             # Chinese media (default language)
+    │   ├── 1-login.png
+    │   ├── 2-settings.png
+    │   ├── wisquest_horizontal_logo.png
+    │   ├── wisquest_horizontal_logo_widemargin.png
+    │   └── wisquest_white_circle_background.png
+    ├── en/             # English media (same screenshots + logos)
+    │   ├── 1-login.png
+    │   ├── 2-settings.png
+    │   └── ... (logos)
+    └── ru/             # Russian media (same screenshots + logos)
+        ├── 1-login.png
+        ├── 2-settings.png
+        └── ... (logos)
+```
+
+**Key rule:** Screenshots are identical across all language subfolders — the same set of media files is copied to every `media/{lang}/` directory. Logos follow the same pattern.
 
 ## Common Mistakes
 
@@ -558,3 +599,8 @@ The markdown content itself (headings, paragraphs, etc.) is in the source langua
 | Chinese characters appear in non-Chinese i18n strings | Verify every non-Chinese translation value contains no 汉字 — use only the target language's script |
 | `<html lang>` not updated on language switch | Update `document.documentElement.lang` when switching languages |
 | `data-i18n` initial text not in default language | The HTML body's initial text content must match the default language (first in `LANGS`) |
+| Multi-language HTML but media not isolated per language | When `LANGS` has >1 language, create `media/{lang}/` subfolders for each language and copy screenshots + logos to ALL subfolders |
+| Multi-language HTML uses flat `media/` structure | Multi-language mode requires `media/{lang}/` structure; flat `media/` without language subfolders is only for single-language mode |
+| Screenshots not copied to all language subfolders in multi-lang mode | Every screenshot must be copied to ALL language media subfolders (e.g., `media/zh/`, `media/en/`, `media/ru/`) |
+| Media `src` paths don't include language prefix in multi-lang mode | Use `media/{DEFAULT_LANG}/{filename}` for all image/link paths when multi-language |
+| Logos only copied to default language folder in multi-lang mode | Copy logos to ALL language subfolders — each language needs its own complete media set |

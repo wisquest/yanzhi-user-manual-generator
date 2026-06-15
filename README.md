@@ -18,6 +18,18 @@
 /plugin install yanzhi-user-manual-generator
 ```
 
+### 安装截图自动捕获依赖（可选）
+
+如需自动截取 Web App 截图，需安装 auto-capture-for-webapp 插件：
+
+```
+/plugin marketplace add wisquest/auto-capture-for-webapp
+```
+
+```
+/plugin install auto-capture-for-webapp 
+```
+
 ## Skills
 
 ### writing-user-manual

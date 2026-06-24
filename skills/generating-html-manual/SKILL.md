@@ -44,7 +44,7 @@ This skill generates an HTML page with external CSS/JS/i18n files. Content text 
    - Anchor IDs never contain non-English characters (no pinyin, no Cyrillic, no Kanji, no Hangul, no Arabic script)
    - Language switcher dropdown change updates URL `?lang=` parameter without full page reload (`history.replaceState`)
    - `index.html` contains ONLY page layout (header, sidebar shell, content/toc containers, footer) — NO hardcoded manual content text
-   - `i18n/content-{lang}.js` files exist for each language (e.g., `i18n/content-zh.js`, `i18n/content-en.js`) — each exports `I18N_CONTENT['{lang}']` with `body` and `toc` HTML strings
+   - `i18n/content-{lang}.js` files exist for each language (e.g., `i18n/content-zh-CN.js`, `i18n/content-en-US.js`) — each exports `I18N_CONTENT['{lang}']` with `body` and `toc` HTML strings
    - `switchLanguage()` injects `I18N_CONTENT[lang].body` into `#content-container` and `I18N_CONTENT[lang].toc` into `#toc-container` via `innerHTML`
    - `switchLanguage()` re-binds TOC link click handlers after injecting new TOC HTML
    - `switchLanguage()` calls `mermaid.run()` on the newly injected content to render diagrams
@@ -112,15 +112,15 @@ Save the user's choice as the `LANGS` variable. Format: **comma-separated langua
 
 | Choice | `LANGS` value |
 |--------|---------------|
-| 1 (仅中文) | `zh` |
-| 2 (中英俄) | `zh,en,ru` |
-| 3 (自定义) | User-specified codes, e.g., `zh,ja,ko` or `en,zh` |
+| 1 (仅中文) | `zh-CN` |
+| 2 (中英俄) | `zh-CN,en-US,ru-RU` |
+| 3 (自定义) | User-specified codes, e.g., `zh-CN,ja-JP,ko-KR` or `en-US,zh-CN` |
 
-Supported language codes: `zh` (Simplified Chinese), `en` (English), `ru` (Russian), `ja` (Japanese), `ko` (Korean), `fr` (French), `de` (German), `es` (Spanish), `pt` (Portuguese), `ar` (Arabic).
+Supported language codes: `zh-CN` (Simplified Chinese), `en-US` (English), `ru-RU` (Russian), `ja-JP` (Japanese), `ko-KR` (Korean), `fr-FR` (French), `de-DE` (German), `es-ES` (Spanish), `pt-PT` (Portuguese), `ar-SA` (Arabic).
 
 **If `LANGS` contains more than one language** (i.e., the string contains a comma), the HTML page MUST include full multi-language switching support. See the [Multi-Language Support](#multi-language-support) section for implementation details.
 
-**If `LANGS` has only one language** (e.g., `zh`), skip all i18n — generate a single-language page as before. The single language becomes the page language and all UI chrome uses that language.
+**If `LANGS` has only one language** (e.g., `zh-CN`), skip all i18n — generate a single-language page as before. The single language becomes the page language and all UI chrome uses that language.
 
 ### Step 1: Read and Parse
 
@@ -139,14 +139,14 @@ Supported language codes: `zh` (Simplified Chinese), `en` (English), `ru` (Russi
    - `scripts/` — external JavaScript files (one or more `.js` files for page logic)
    - `i18n/` — language files (multi-language only). Two types: UI chrome (`{lang}.js`) and content (`content-{lang}.js`). Skip for single-language pages.
    - `media/` — media assets with language subfolder structure:
-     - **Single-language** (`LANGS` has 1 item, e.g., `zh`): Create one `media/` subfolder
-     - **Multi-language** (`LANGS` has >1 item, e.g., `zh,en,ru`): Create `media/{lang}/` subfolder for **each** language in `LANGS` (e.g., `media/zh/`, `media/en/`, `media/ru/`)
+     - **Single-language** (`LANGS` has 1 item, e.g., `zh-CN`): Create one `media/` subfolder
+     - **Multi-language** (`LANGS` has >1 item, e.g., `zh-CN,en-US,ru-RU`): Create `media/{lang}/` subfolder for **each** language in `LANGS` (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`)
 3. Copy all referenced media files (screenshots, diagrams, etc.):
    - **Single-language:** Copy to `media/` directly
-   - **Multi-language:** Copy each media file to **ALL** language subfolders (e.g., `1-login.png` → `media/zh/1-login.png` + `media/en/1-login.png` + `media/ru/1-login.png`). Screenshots are identical across languages — this isolation ensures each language has its own complete media set.
+   - **Multi-language:** Copy each media file to **ALL** language subfolders (e.g., `1-login.png` → `media/zh-CN/1-login.png` + `media/en-US/1-login.png` + `media/ru-RU/1-login.png`). Screenshots are identical across languages — this isolation ensures each language has its own complete media set.
 4. Copy the company logo files from this skill's `company_style/` directory:
    - **Single-language:** Copy to `media/`
-   - **Multi-language:** Copy to **ALL** language subfolders (e.g., `media/zh/`, `media/en/`, `media/ru/`)
+   - **Multi-language:** Copy to **ALL** language subfolders (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`)
 
 ### Step 3: Translate and Convert Markdown to HTML
 
@@ -170,7 +170,7 @@ Supported language codes: `zh` (Simplified Chinese), `en` (English), `ru` (Russi
 4. Generate the TOC HTML using the **same anchor IDs and TOC structure** as the default language, with only the link text translated
 5. Save as `i18n/content-{LANG}.js`
 
-**Why this order matters:** If each language is translated independently, the AI may generate different English anchor IDs for the same heading (e.g., "系统设置" → `system-settings` in zh but `system-config` in en). Sequential generation with the default language as the authority prevents this divergence. Anchor IDs must be **byte-for-byte identical** across all language content files — not just semantically similar.
+**Why this order matters:** If each language is translated independently, the AI may generate different English anchor IDs for the same heading (e.g., "系统设置" → `system-settings` in zh-CN but `system-config` in en-US). Sequential generation with the default language as the authority prevents this divergence. Anchor IDs must be **byte-for-byte identical** across all language content files — not just semantically similar.
 
 **Translation rules for each block:**
    - Headings: translate visible text, **keep anchor `id` from Phase A map** (do not regenerate)
@@ -232,7 +232,7 @@ message: feat: ...
 
 **Media path rewrite:** All media references must use relative paths:
 - **Single-language:** `media/{filename}`
-- **Multi-language (injected content):** Each language's content HTML uses its own path — `media/zh/{filename}` in `I18N_CONTENT['zh'].body`, `media/en/{filename}` in `I18N_CONTENT['en'].body`, etc.
+- **Multi-language (injected content):** Each language's content HTML uses its own path — `media/zh-CN/{filename}` in `I18N_CONTENT['zh-CN'].body`, `media/en-US/{filename}` in `I18N_CONTENT['en-US'].body`, etc.
 - **Multi-language (header/footer logos in `index.html`):** Default to `media/{DEFAULT_LANG}/{filename}` and add `data-src-{lang}` attributes for runtime switching
 
 **Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must use a fixed height with wide aspect ratio (5:8 = height:width, matching 1200×1920px source screenshots): `height: 450px; object-fit: contain; object-position: center; max-width: 720px; width: 100%`. The `height: 450px` ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `max-width: 720px` matches the 5:8 ratio (450 × 8/5 = 720), giving screenshots a landscape/widescreen display. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
@@ -281,7 +281,7 @@ Generate a complete HTML page with the following structure and design specs. Sty
 - **Mermaid.js** is loaded via CDN in the HTML `<head>` (no local copy needed)
 - **Company logo images** are referenced from `media/` (single-lang) or `media/{lang}/` (multi-lang)
 
-All external files are referenced from `index.html` using relative paths (e.g., `<link rel="stylesheet" href="style/main.css">`, `<script src="scripts/main.js"></script>`, `<script src="i18n/zh.js"></script>`).
+All external files are referenced from `index.html` using relative paths (e.g., `<link rel="stylesheet" href="style/main.css">`, `<script src="scripts/main.js"></script>`, `<script src="i18n/zh-CN.js"></script>`).
 
 #### Page Structure
 
@@ -299,10 +299,10 @@ All external files are referenced from `index.html` using relative paths (e.g., 
 | `{{VERSION}}` | Version string if found (e.g., "V2.3.0"), otherwise empty |
 | `{{BODY_CONTENT}}` | **Single-language only:** Converted HTML body from Step 3, placed directly in `#content-container`. **Multi-language:** empty string — content is injected by JS from `i18n/content-{lang}.js` |
 | `{{SIDEBAR_TOC}}` | **Single-language only:** Generated TOC `<ul>`, placed directly in `#toc-container`. **Multi-language:** empty string — TOC is injected by JS |
-| `{{DEFAULT_LANG}}` | First language code from `LANGS` (e.g., `zh`) — used in JS init |
-| `{{LANGS_LIST}}` | Full `LANGS` string (e.g., `zh,en,ru`) — used for language switcher |
-| `{{UI_I18N_SCRIPTS}}` | `<script>` tags loading UI chrome i18n files (`i18n/zh.js`, `i18n/en.js`). Empty if single-language. |
-| `{{CONTENT_SCRIPTS}}` | `<script>` tags loading content files (`i18n/content-zh.js`, `i18n/content-en.js`). Empty if single-language. |
+| `{{DEFAULT_LANG}}` | First language code from `LANGS` (e.g., `zh-CN`) — used in JS init |
+| `{{LANGS_LIST}}` | Full `LANGS` string (e.g., `zh-CN,en-US,ru-RU`) — used for language switcher |
+| `{{UI_I18N_SCRIPTS}}` | `<script>` tags loading UI chrome i18n files (`i18n/zh-CN.js`, `i18n/en-US.js`). Empty if single-language. |
+| `{{CONTENT_SCRIPTS}}` | `<script>` tags loading content files (`i18n/content-zh-CN.js`, `i18n/content-en-US.js`). Empty if single-language. |
 | `{{LANG_SWITCHER}}` | HTML for language switcher dropdown select (empty if single-language) |
 
 #### Layout Specs
@@ -391,13 +391,13 @@ Build the sidebar TOC from parsed headings:
 **Example TOC injected by JS (multi-language):**
 
 ```html
-<!-- Injected into #toc-container by switchLanguage('zh') -->
+<!-- Injected into #toc-container by switchLanguage('zh-CN') -->
 <ul class="toc-list">
   <li class="toc-h2"><a href="#system-settings">系统设置</a></li>
   <li class="toc-h3"><a href="#system-settings-export-path">导出路径</a></li>
 </ul>
 
-<!-- Injected into #toc-container by switchLanguage('en') -->
+<!-- Injected into #toc-container by switchLanguage('en-US') -->
 <ul class="toc-list">
   <li class="toc-h2"><a href="#system-settings">System Settings</a></li>
   <li class="toc-h3"><a href="#system-settings-export-path">Export Path</a></li>
@@ -519,7 +519,7 @@ graph TD
 **Company logos:**
 - Always copy all files from `company_style/` to the `media/` directory:
   - **Single-language:** `{output}/media/`
-  - **Multi-language:** ALL language subfolders (`{output}/media/zh/`, `{output}/media/en/`, etc.)
+  - **Multi-language:** ALL language subfolders (`{output}/media/zh-CN/`, `{output}/media/en-US/`, etc.)
 - In HTML, reference logos from `media/` (single-lang) or `media/{DEFAULT_LANG}/` (multi-lang)
 - Header uses `wisquest_horizontal_logo.png`
 - Footer uses `wisquest_horizontal_logo_widemargin.png`
@@ -536,9 +536,9 @@ When `LANGS` contains more than one language (comma-separated), the generated HT
 
 | `LANGS` | Languages | i18n Required? |
 |---------|-----------|----------------|
-| `zh` | Simplified Chinese only | ❌ No — single-language page |
-| `zh,en,ru` | Chinese (default), English, Russian | ✅ Yes — full i18n |
-| `en,zh,ja,ko` | English (default), Chinese, Japanese, Korean | ✅ Yes — full i18n |
+| `zh-CN` | Simplified Chinese only | ❌ No — single-language page |
+| `zh-CN,en-US,ru-RU` | Chinese (default), English, Russian | ✅ Yes — full i18n |
+| `en-US,zh-CN,ja-JP,ko-KR` | English (default), Chinese, Japanese, Korean | ✅ Yes — full i18n |
 
 ### Language Switching Widget
 
@@ -550,16 +550,16 @@ When multi-language is active, add a language switcher in the **top-right corner
 
 | Language Code | Flag Emoji | Display Name |
 |--------------|------------|--------------|
-| `zh` | 🇨🇳 | 简体中文 |
-| `en` | 🇺🇸 | English |
-| `ru` | 🇷🇺 | русский язык |
-| `ja` | 🇯🇵 | 日本語 |
-| `ko` | 🇰🇷 | 한국어 |
-| `fr` | 🇫🇷 | Français |
-| `de` | 🇩🇪 | Deutsch |
-| `es` | 🇪🇸 | Español |
-| `pt` | 🇵🇹 | Português |
-| `ar` | 🇸🇦 | العربية |
+| `zh-CN` | 🇨🇳 | 简体中文 |
+| `en-US` | 🇺🇸 | English |
+| `ru-RU` | 🇷🇺 | русский язык |
+| `ja-JP` | 🇯🇵 | 日本語 |
+| `ko-KR` | 🇰🇷 | 한국어 |
+| `fr-FR` | 🇫🇷 | Français |
+| `de-DE` | 🇩🇪 | Deutsch |
+| `es-ES` | 🇪🇸 | Español |
+| `pt-PT` | 🇵🇹 | Português |
+| `ar-SA` | 🇸🇦 | العربية |
 
 - **Interaction:** Selecting an option from the dropdown switches the page language immediately. Persist the choice in `localStorage` (key: `manual-lang`).
 - **On page load:** Read `localStorage` for saved preference; fall back to the first language in `LANGS` (the default). Set the `<select>` value to match the active language.
@@ -570,9 +570,9 @@ When multi-language is active, add a language switcher in the **top-right corner
 ```html
 <label data-i18n="lang-switcher-label" for="lang-select" class="lang-switch-label">语言</label>
 <select id="lang-select" class="lang-switch-select">
-  <option value="zh">🇨🇳 简体中文</option>
-  <option value="en">🇺🇸 English</option>
-  <option value="ru">🇷🇺 русский язык</option>
+  <option value="zh-CN">🇨🇳 简体中文</option>
+  <option value="en-US">🇺🇸 English</option>
+  <option value="ru-RU">🇷🇺 русский язык</option>
 </select>
 ```
 
@@ -583,18 +583,18 @@ Only include `<option>` elements for languages present in `LANGS`. The `<label>`
 ```javascript
 // Language display metadata (flag emoji + native name)
 const LANG_FLAGS = {
-  zh: '🇨🇳', en: '🇺🇸', ru: '🇷🇺', ja: '🇯🇵', ko: '🇰🇷',
-  fr: '🇫🇷', de: '🇩🇪', es: '🇪🇸', pt: '🇵🇹', ar: '🇸🇦'
+  'zh-CN': '🇨🇳', 'en-US': '🇺🇸', 'ru-RU': '🇷🇺', 'ja-JP': '🇯🇵', 'ko-KR': '🇰🇷',
+  'fr-FR': '🇫🇷', 'de-DE': '🇩🇪', 'es-ES': '🇪🇸', 'pt-PT': '🇵🇹', 'ar-SA': '🇸🇦'
 };
 const LANG_NAMES = {
-  zh: '简体中文', en: 'English', ru: 'русский язык', ja: '日本語', ko: '한국어',
-  fr: 'Français', de: 'Deutsch', es: 'Español', pt: 'Português', ar: 'العربية'
+  'zh-CN': '简体中文', 'en-US': 'English', 'ru-RU': 'русский язык', 'ja-JP': '日本語', 'ko-KR': '한국어',
+  'fr-FR': 'Français', 'de-DE': 'Deutsch', 'es-ES': 'Español', 'pt-PT': 'Português', 'ar-SA': 'العربية'
 };
 ```
 
 ### URL Language Parameter (`?lang=`)
 
-The HTML page must support a `?lang=` URL query parameter to set the display language on page load. This allows linking directly to a specific language version (e.g., `manual.html?lang=en`).
+The HTML page must support a `?lang=` URL query parameter to set the display language on page load. This allows linking directly to a specific language version (e.g., `manual.html?lang=en-US`).
 
 **Priority (highest to lowest) on page load:**
 
@@ -603,15 +603,15 @@ The HTML page must support a `?lang=` URL query parameter to set the display lan
 3. **Default language** (first language in `LANGS`) — final fallback
 
 **Behavior:**
-- `?lang=zh` → display Chinese version (UI chrome + content blocks + images)
-- `?lang=en` → display English version
-- `?lang=ru` → display Russian version
+- `?lang=zh-CN` → display Chinese version (UI chrome + content blocks + images)
+- `?lang=en-US` → display English version
+- `?lang=ru-RU` → display Russian version
 - Unsupported/invalid language code → fall through to localStorage, then default
 - No `?lang=` parameter → use localStorage, then default
 
 **Combined `#` anchor + `?lang=` parameter:**
 
-When the URL contains both a hash anchor and a language parameter (e.g., `manual.html?lang=zh#system-settings-export-path`), the page must:
+When the URL contains both a hash anchor and a language parameter (e.g., `manual.html?lang=zh-CN#system-settings-export-path`), the page must:
 
 1. **Apply language first** — read `?lang=` and `await switchLanguage()` to inject correct content HTML + UI chrome
 2. **Then scroll to anchor** — after content is injected and Mermaid diagrams are rendered, scroll the target heading into view with proper offset (64px header + 16px padding = 80px)
@@ -638,9 +638,9 @@ The initial text content (before any JS runs) must be in the **default language*
 
 Translation text for UI chrome (data-i18n elements) is stored in **separate JavaScript files** under the `i18n/` directory — one file per language. Each file defines a `I18N[LANG]` object on the global `I18N` namespace:
 
-**`i18n/zh.js`** (Chinese):
+**`i18n/zh-CN.js`** (Chinese):
 ```javascript
-I18N['zh'] = {
+I18N['zh-CN'] = {
   'header-title': '用户使用手册',
   'toc-title': '目录',
   'footer-copyright': '© 2026 研知教育科技 版权所有',
@@ -648,9 +648,9 @@ I18N['zh'] = {
 };
 ```
 
-**`i18n/en.js`** (English):
+**`i18n/en-US.js`** (English):
 ```javascript
-I18N['en'] = {
+I18N['en-US'] = {
   'header-title': 'User Manual',
   'toc-title': 'Contents',
   'footer-copyright': '© 2026 WisQuest EdTech. All rights reserved.',
@@ -658,9 +658,9 @@ I18N['en'] = {
 };
 ```
 
-**`i18n/ru.js`** (Russian):
+**`i18n/ru-RU.js`** (Russian):
 ```javascript
-I18N['ru'] = {
+I18N['ru-RU'] = {
   'header-title': 'Руководство пользователя',
   'toc-title': 'Содержание',
   'footer-copyright': '© 2026 WisQuest EdTech. Все права защищены.',
@@ -674,15 +674,15 @@ I18N['ru'] = {
 - The global `I18N` object is initialized in `scripts/main.js` before any i18n files are loaded: `const I18N = {};`
 - i18n files are loaded AFTER `scripts/main.js` and BEFORE the `DOMContentLoaded` handler fires
 - No `fold-sidebar` / `expand-sidebar` / `back-to-top` keys — sidebar toggle and back-to-top buttons are pure icons with no text
-- The `index.html` `<head>` loads i18n files as: `<script src="i18n/zh.js"></script>` etc.
+- The `index.html` `<head>` loads i18n files as: `<script src="i18n/zh-CN.js"></script>` etc.
 
 ### Content Files (`i18n/content-{lang}.js`)
 
 When `LANGS` has multiple languages, ALL manual content text (headings, paragraphs, tables, figures, callouts, code blocks) and sidebar TOC HTML are stored in content JS files — NOT in `index.html`. Each language gets its own content file.
 
-**`i18n/content-zh.js`** (Chinese content):
+**`i18n/content-zh-CN.js`** (Chinese content):
 ```javascript
-I18N_CONTENT['zh'] = {
+I18N_CONTENT['zh-CN'] = {
   toc: '<ul class="toc-list">' +
     '<li class="toc-h2"><a href="#system-settings">系统设置</a></li>' +
     '<li class="toc-h3"><a href="#system-settings-export-path">导出路径</a></li>' +
@@ -690,7 +690,7 @@ I18N_CONTENT['zh'] = {
   body: '<h2 id="system-settings">系统设置</h2>' +
     '<p>这是系统设置页面的详细说明...</p>' +
     '<figure>' +
-    '<img src="media/zh/1-settings.png" alt="系统设置" height="1920" width="1200">' +
+    '<img src="media/zh-CN/1-settings.png" alt="系统设置" height="1920" width="1200">' +
     '<figcaption>图1：系统设置</figcaption>' +
     '</figure>' +
     '<pre class="mermaid">graph LR\n  A[开始] --> B[结束]</pre>'
@@ -704,7 +704,7 @@ I18N_CONTENT['zh'] = {
 - Anchor IDs are identical across all language content files
 - `I18N_CONTENT` global is initialized in `scripts/main.js` as `const I18N_CONTENT = {};`
 - Content files are loaded AFTER `scripts/main.js` but BEFORE the `DOMContentLoaded` handler
-- The `index.html` `<head>` loads content files as: `<script src="i18n/content-zh.js"></script>` etc.
+- The `index.html` `<head>` loads content files as: `<script src="i18n/content-zh-CN.js"></script>` etc.
 - `index.html` itself contains ZERO manual content text — only layout shells with empty container divs
 - **Single-language pages** skip content files entirely — content goes directly in `index.html`
 
@@ -733,7 +733,7 @@ async function renderMermaidInContent() {
 
 async function switchLanguage(lang) {
   if (!I18N[lang]) return;
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+  document.documentElement.lang = lang === 'zh-CN' ? 'zh-CN' : lang;
 
   // 1. Switch UI chrome text (data-i18n)
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -752,7 +752,7 @@ async function switchLanguage(lang) {
   }
 
   // 3. Switch header/footer logo src (outside injected content)
-  document.querySelectorAll('img[data-src-zh]').forEach(img => {
+  document.querySelectorAll('img[data-src-zh-CN]').forEach(img => {
     const newSrc = img.getAttribute('data-src-' + lang);
     if (newSrc) img.src = newSrc;
   });
@@ -866,10 +866,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 ```html
 <!-- Header logo with language-specific src switching -->
-<img src="media/zh/wisquest_horizontal_logo.png"
-     data-src-zh="media/zh/wisquest_horizontal_logo.png"
-     data-src-en="media/en/wisquest_horizontal_logo.png"
-     data-src-ru="media/ru/wisquest_horizontal_logo.png"
+<img src="media/zh-CN/wisquest_horizontal_logo.png"
+     data-src-zh-CN="media/zh-CN/wisquest_horizontal_logo.png"
+     data-src-en-US="media/en-US/wisquest_horizontal_logo.png"
+     data-src-ru-RU="media/ru-RU/wisquest_horizontal_logo.png"
      alt="Logo" class="header-logo">
 ```
 
@@ -907,12 +907,12 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 
 | Language | Company Name | Footer Copyright |
 |----------|-------------|------------------|
-| `zh` (Chinese) | 研知教育科技 | © 2026 研知教育科技 版权所有 |
-| `en` (English) | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
-| `ru` (Russian) | WisQuest EdTech | © 2026 WisQuest EdTech. Все права защищены. |
+| `zh-CN` (Chinese) | 研知教育科技 | © 2026 研知教育科技 版权所有 |
+| `en-US` (English) | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
+| `ru-RU` (Russian) | WisQuest EdTech | © 2026 WisQuest EdTech. Все права защищены. |
 | Any other non-Chinese | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
 
-**Key rule: 研知教育科技 is ONLY used in the Chinese (`zh`) version. All non-Chinese versions MUST use `WisQuest EdTech`.** This applies to footer copyright, page title, and any company name reference in the UI chrome.
+**Key rule: 研知教育科技 is ONLY used in the Chinese (`zh-CN`) version. All non-Chinese versions MUST use `WisQuest EdTech`.** This applies to footer copyright, page title, and any company name reference in the UI chrome.
 
 ### No Chinese in Non-Chinese Content
 
@@ -924,7 +924,7 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 
 ## Output Structure
 
-**Single-language** (`LANGS=zh`):
+**Single-language** (`LANGS=zh-CN`):
 
 ```
 {manual-name}-html/
@@ -939,7 +939,7 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
     └── ...
 ```
 
-**Multi-language** (`LANGS=zh,en,ru`):
+**Multi-language** (`LANGS=zh-CN,en-US,ru-RU`):
 
 ```
 {manual-name}-html/
@@ -949,16 +949,16 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 ├── scripts/
 │   └── main.js          # Page logic (i18n, content injection, sidebar, Mermaid, TOC)
 ├── i18n/
-│   ├── zh.js            # Chinese UI chrome (toc-title, footer-copyright, etc.)
-│   ├── en.js            # English UI chrome
-│   ├── ru.js            # Russian UI chrome
-│   ├── content-zh.js    # Chinese body HTML + TOC HTML strings
-│   ├── content-en.js    # English body HTML + TOC HTML strings
-│   └── content-ru.js    # Russian body HTML + TOC HTML strings
+│   ├── zh-CN.js            # Chinese UI chrome (toc-title, footer-copyright, etc.)
+│   ├── en-US.js            # English UI chrome
+│   ├── ru-RU.js            # Russian UI chrome
+│   ├── content-zh-CN.js    # Chinese body HTML + TOC HTML strings
+│   ├── content-en-US.js    # English body HTML + TOC HTML strings
+│   └── content-ru-RU.js    # Russian body HTML + TOC HTML strings
 └── media/
-    ├── zh/             # Chinese media
-    ├── en/             # English media (same screenshots, copied)
-    └── ru/             # Russian media (same screenshots, copied)
+    ├── zh-CN/             # Chinese media
+    ├── en-US/             # English media (same screenshots, copied)
+    └── ru-RU/             # Russian media (same screenshots, copied)
 ```
 
 **Key rule:** `index.html` for multi-language contains ZERO manual content text — only layout. All content is in `i18n/content-{lang}.js` files and injected at runtime. This keeps `index.html` small regardless of document size.
@@ -975,7 +975,7 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | Mistake | Fix |
 |---------|-----|
 | External CSS/JS/i18n files not created | Generate all external files (`style/*.css`, `scripts/*.js`, `i18n/*.js`) alongside `index.html` |
-| Wrong relative paths to external files | Use relative paths from `index.html`: `style/main.css`, `scripts/main.js`, `i18n/zh.js` |
+| Wrong relative paths to external files | Use relative paths from `index.html`: `style/main.css`, `scripts/main.js`, `i18n/zh-CN.js` |
 | Absolute paths for media or external files | Always use relative paths for all local resources |
 | Missing heading IDs | Every heading needs an `id` for TOC linking |
 | Forgetting to copy logos | Always copy all `company_style/` files |
@@ -1012,20 +1012,20 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | Anchor IDs use transliteration for non-Chinese languages (e.g., `nastroiki` for Russian "Настройки", `settei` for Japanese "設定") | ALL headings in ANY language must be translated to English meaning — use `settings`, not transliteration. The anchor ID format is always lowercase English words with hyphen separators, regardless of the content language |
 | Anchor IDs contain non-English script characters (Cyrillic, Kanji, Hangul, Arabic, etc.) | Translate ALL heading text to English for anchor IDs — Russian "Настройки системы" → `system-settings`, Japanese "設定" → `settings`, Korean "설정" → `settings`, Arabic "إعدادات" → `settings` |
 | URL `?lang=` parameter not supported | Implement `getUrlLang()` using `URLSearchParams`. On page load, check URL param with priority: URL `?lang=` > localStorage > default language |
-| Combined `#anchor` + `?lang=` URL not handled correctly | When URL has both `?lang=zh#some-anchor`, apply language FIRST via `switchLanguage()`, then scroll to anchor via `requestAnimationFrame` (double frame to ensure DOM is stable). Wrong order (scroll before language) causes anchor to miss target |
+| Combined `#anchor` + `?lang=` URL not handled correctly | When URL has both `?lang=zh-CN#some-anchor`, apply language FIRST via `switchLanguage()`, then scroll to anchor via `requestAnimationFrame` (double frame to ensure DOM is stable). Wrong order (scroll before language) causes anchor to miss target |
 | Anchor scroll on combined `?lang=` + `#` fires before i18n DOM updates complete | Use nested `requestAnimationFrame` to defer anchor scrolling until after language switch re-renders all `data-i18n` elements. Single frame may fire before DOM updates paint |
 | Language selection not asked before HTML generation | Step 0 is MANDATORY — always ask the user for language preferences before any other work |
 | i18n not implemented when `LANGS` has multiple languages | When `LANGS` contains a comma, implement full `data-i18n` + language switcher + i18n external files |
 | Language switcher missing or in wrong position | Language switcher must be in the **top-right corner of the header**, to the right of the version string |
 | Language switcher uses buttons instead of dropdown select | Use a `<select>` dropdown (`.lang-switch-select`) with `<option>` elements. Each option shows flag emoji on the left and language name on the right (e.g., `🇨🇳 简体中文`, `🇺🇸 English`) |
 | Language preference not persisted across page loads | Save to `localStorage` (key: `manual-lang`) and restore on page load |
-| Chinese company name in non-Chinese translations | `研知教育科技` ONLY in `zh`. All non-Chinese versions use `WisQuest EdTech` |
+| Chinese company name in non-Chinese translations | `研知教育科技` ONLY in `zh-CN`. All non-Chinese versions use `WisQuest EdTech` |
 | Chinese characters appear in non-Chinese i18n strings | Verify every non-Chinese translation value contains no 汉字 — use only the target language's script |
 | `<html lang>` not updated on language switch | Update `document.documentElement.lang` when switching languages |
 | `data-i18n` initial text not in default language | The HTML body's initial text content must match the default language (first in `LANGS`) |
 | Multi-language HTML but media not isolated per language | When `LANGS` has >1 language, create `media/{lang}/` subfolders for each language and copy screenshots + logos to ALL subfolders |
 | Multi-language HTML uses flat `media/` structure | Multi-language mode requires `media/{lang}/` structure; flat `media/` without language subfolders is only for single-language mode |
-| Screenshots not copied to all language subfolders in multi-lang mode | Every screenshot must be copied to ALL language media subfolders (e.g., `media/zh/`, `media/en/`, `media/ru/`) |
+| Screenshots not copied to all language subfolders in multi-lang mode | Every screenshot must be copied to ALL language media subfolders (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`) |
 | Media `src` paths don't include language prefix in multi-lang mode | Use `media/{DEFAULT_LANG}/{filename}` for all image/link paths when multi-language |
 | Logos only copied to default language folder in multi-lang mode | Copy logos to ALL language subfolders — each language needs its own complete media set |
 | Markdown content not translated into all target languages | Translate full markdown into each language. Save each as `I18N_CONTENT['{lang}'].body` in `i18n/content-{lang}.js` |

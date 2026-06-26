@@ -7,7 +7,7 @@ description: Use when the user has a Markdown user manual and wants to convert i
 
 ## Overview
 
-Convert a Markdown user manual into a styled HTML page with sidebar catalogue navigation, back-to-top button, and company branding. `index.html` contains only page layout (header, sidebar shell, content container, footer). All manual content text is stored in external JS files and injected at runtime — keeping `index.html` lean regardless of document size.
+Convert a Markdown user manual into styled HTML pages with sidebar catalogue navigation, back-to-top button, and company branding. Each language gets its own `index-{lang}.html` file with content hardcoded in that language. Language switching navigates between files — no URL parameters, no runtime content injection. Anchors (like `#system-login`) work cleanly across all languages without `?lang=` conflicts.
 
 ## When to Use
 
@@ -26,7 +26,7 @@ Convert a Markdown user manual into a styled HTML page with sidebar catalogue na
 
 **DEVELOPMENT METHODOLOGY — TDD Required (RED-GREEN-REFACTOR):**
 
-This skill generates an HTML page with external CSS/JS/i18n files. Content text is injected at runtime from JS files. **HTML/CSS/JS code generation (Steps 3-4) MUST follow the superpowers TDD cycle:**
+This skill generates styled HTML pages with external CSS/JS files. Each language gets its own `index-{lang}.html` file with all content hardcoded — no runtime injection, no URL parameters. **HTML/CSS/JS code generation (Steps 3-4) MUST follow the superpowers TDD cycle:**
 
 1. **RED — Write failing tests first:** Before writing ANY HTML/CSS/JS code, write test assertions for each structure, style, and behavior. Tests must verify:
    - Correct heading hierarchy and ID slugs (anchor IDs are **always** lowercase English words with hyphen separators, regardless of content language; Chinese/Russian/Japanese/Korean/Arabic titles are translated to English for anchors; NEVER use pinyin or transliteration — e.g., `system-settings-export-path`, not `xi-tong-she-zhi`)
@@ -36,31 +36,27 @@ This skill generates an HTML page with external CSS/JS/i18n files. Content text 
    - Anchor scroll offset prevents fixed header from hiding targets
    - Contrast rules (no dark text on dark backgrounds)
    - Media path correctness (all `src`/`href` point to files that exist in `media/`)
-   - All external file references resolve correctly (`style/*.css`, `scripts/*.js`, `i18n/*.js` — all relative paths from `index.html`)
-   - Output directory contains all required subdirectories (`style/`, `scripts/`, `media/`) plus `i18n/` for multi-language
+   - All external file references resolve correctly (`style/*.css`, `scripts/*.js` — all relative paths from each `index-{lang}.html`)
+   - Output directory contains all required subdirectories (`style/`, `scripts/`, `media/`). NO `i18n/` directory.
    - Print styles hide navigation chrome
-   - URL `?lang=` parameter correctly sets language on page load (priority: URL > localStorage > default)
-   - Combined `#anchor` + `?lang=` URL applies language first, then scrolls to anchor target
+   - **Multi-language:** Each language in `LANGS` produces a separate `index-{lang}.html` file (e.g., `index-zh-CN.html`, `index-en-US.html`, `index-ru-RU.html`)
+   - **Multi-language:** Each `index-{lang}.html` has ALL content (body + TOC) hardcoded in that language — NO runtime content injection, NO `I18N_CONTENT`, NO `switchLanguage()`
+   - `#` (h1) heading is rendered as `<h1>` in body content with the `#` prefix stripped from visible text (e.g., `# 研知AI互动课堂` → `<h1>研知AI互动课堂</h1>`). The version string immediately following the `#` heading goes in header version span, not body.
+   - **Multi-language:** Anchor IDs are byte-for-byte identical across ALL `index-{lang}.html` files (not just semantically similar)
+   - **Single-language:** Output a single `index.html` with content hardcoded directly
    - Anchor IDs never contain non-English characters (no pinyin, no Cyrillic, no Kanji, no Hangul, no Arabic script)
-   - Language switcher dropdown change updates URL `?lang=` parameter without full page reload (`history.replaceState`)
-   - `index.html` contains ONLY page layout (header, sidebar shell, content/toc containers, footer) — NO hardcoded manual content text
-   - `i18n/content-{lang}.js` files exist for each language (e.g., `i18n/content-zh-CN.js`, `i18n/content-en-US.js`) — each exports `I18N_CONTENT['{lang}']` with `body` and `toc` HTML strings
-   - `switchLanguage()` injects `I18N_CONTENT[lang].body` into `#content-container` and `I18N_CONTENT[lang].toc` into `#toc-container` via `innerHTML`
-   - `switchLanguage()` re-binds TOC link click handlers after injecting new TOC HTML
-   - `switchLanguage()` calls `mermaid.run()` on the newly injected content to render diagrams
-   - `switchLanguage()` swaps image `src` for header/footer logos using `data-src-{lang}` attributes
-   - Images in injected content use `media/{lang}/` paths — no `data-src-{lang}` needed
-   - `scripts/main.js` initializes `const I18N = {};` and `const I18N_CONTENT = {};` before any i18n files
-   - Sidebar toggle button has NO `data-i18n` attribute and NO translatable text (pure icon)
-   - Back-to-top button has NO `data-i18n` attribute and NO translatable text (pure icon)
-   - All UI chrome text has `data-i18n` with translations (header-title, toc-title, footer-copyright, lang-switcher-label)
    - Language switcher is a `<select>` dropdown with `.lang-switch-select` class; each `<option>` shows flag emoji + language name (e.g., `🇨🇳 简体中文`, `🇺🇸 English`)
-   - Header title bar text switches on language change — `<span data-i18n="header-title">` in the header with translations in every `i18n/{lang}.js` file
-   - No `fold-sidebar`, `expand-sidebar`, or `back-to-top` keys exist in any i18n file
-   - Default language content file is generated FIRST; other languages reuse the same anchor IDs by positional mapping
-   - Anchor IDs are byte-for-byte identical across ALL language content files (not just semantically similar)
-   - Single-language pages output content directly in `index.html` — no JS injection needed
-2. **GREEN — Write minimal code to pass:** Generate the HTML body, create external CSS/JS/i18n files, wire up interactivity — one test at a time. Each increment of HTML/CSS/JS must correspond to a test that was already written and seen to fail.
+   - Language switcher `onchange` navigates to the other language file: `window.location.href = 'index-' + lang + '.html'` (preserving current `#anchor`)
+   - `index.html` is a redirector that reads `localStorage` language preference and redirects to `index-{lang}.html` (preserving `#anchor` if present)
+   - Sidebar toggle button has NO translatable text — it's a pure icon (☰), same across all languages
+   - Back-to-top button has NO translatable text — it's a pure icon (↑/▲), same across all languages
+   - All UI chrome text (header title, TOC title, footer copyright, language switcher label) is **hardcoded** in each `index-{lang}.html` in the target language — NO `data-i18n` attributes needed
+   - Browser `<title>` tag is hardcoded in each `index-{lang}.html` in the target language — NO JS title switching needed
+   - `scripts/main.js` initializes Mermaid with `startOnLoad: true` (content is present in the file at load time, no injection needed)
+   - No `I18N`, `I18N_CONTENT`, `switchLanguage()`, `getUrlLang()`, `data-i18n`, or `data-src-{lang}` attributes exist anywhere — all text and image paths are hardcoded per file
+   - Default language file is generated FIRST; other languages reuse the same anchor IDs by positional mapping
+   - `localStorage` key `manual-lang` stores last selected language; on `index.html` redirect, reads this to redirect to correct file
+2. **GREEN — Write minimal code to pass:** Generate the HTML files, create external CSS/JS files, wire up interactivity — one test at a time. Each increment of HTML/CSS/JS must correspond to a test that was already written and seen to fail.
 3. **REFACTOR — Improve while keeping tests green:** Deduplicate styles, optimize selectors, streamline event handlers, improve semantic markup. Never add new behavior during refactoring.
 
 **REQUIRED SUB-SKILL:** Use `superpowers:test-driven-development` to guide this process — it defines the RED-GREEN-REFACTOR discipline and rationalization countermeasures that keep TDD honest.
@@ -77,25 +73,25 @@ digraph html_manual {
   "Read markdown input" [shape=box];
   "Parse headings for TOC" [shape=box];
   "Identify media references" [shape=box];
-  "Generate output folder with style/scripts/i18n/media dirs" [shape=box];
+  "Generate output folder with style/scripts/media dirs" [shape=box];
   "Copy media files to output folder" [shape=box];
   "Convert markdown to HTML body" [shape=box];
   "Generate external CSS files in style/" [shape=box];
-  "Generate external JS files in scripts/ and i18n/" [shape=box];
-  "Write index.html + all external files to output folder" [shape=box];
+  "Generate external JS files in scripts/" [shape=box];
+  "Write index-{lang}.html files + all external files" [shape=box];
   "Verify all paths and references are valid" [shape=box];
   "Done" [shape=doublecircle];
 
   "Ask user for language selection" -> "Read markdown input";
   "Read markdown input" -> "Parse headings for TOC";
   "Parse headings for TOC" -> "Identify media references";
-  "Identify media references" -> "Generate output folder with style/scripts/i18n/media dirs";
-  "Generate output folder with style/scripts/i18n/media dirs" -> "Copy media files to output folder";
+  "Identify media references" -> "Generate output folder with style/scripts/media dirs";
+  "Generate output folder with style/scripts/media dirs" -> "Copy media files to output folder";
   "Copy media files to output folder" -> "Convert markdown to HTML body";
   "Convert markdown to HTML body" -> "Generate external CSS files in style/";
-  "Generate external CSS files in style/" -> "Generate external JS files in scripts/ and i18n/";
-  "Generate external JS files in scripts/ and i18n/" -> "Write index.html + all external files to output folder";
-  "Write index.html + all external files to output folder" -> "Verify all paths and references are valid";
+  "Generate external CSS files in style/" -> "Generate external JS files in scripts/";
+  "Generate external JS files in scripts/" -> "Write index-{lang}.html files + all external files";
+  "Write index-{lang}.html files + all external files" -> "Verify all paths and references are valid";
   "Verify all paths and references are valid" -> "Done";
 }
 ```
@@ -136,8 +132,7 @@ Supported language codes: `zh-CN` (Simplified Chinese), `en-US` (English), `ru-R
 1. Create a new folder next to the input markdown file, named `{manual-name}-html/`
 2. Create the directory structure:
    - `style/` — external CSS stylesheets (one or more `.css` files)
-   - `scripts/` — external JavaScript files (one or more `.js` files for page logic)
-   - `i18n/` — language files (multi-language only). Two types: UI chrome (`{lang}.js`) and content (`content-{lang}.js`). Skip for single-language pages.
+   - `scripts/` — external JavaScript files (`mermaid.min.js` + `main.js` for page logic)
    - `media/` — media assets with language subfolder structure:
      - **Single-language** (`LANGS` has 1 item, e.g., `zh-CN`): Create one `media/` subfolder
      - **Multi-language** (`LANGS` has >1 item, e.g., `zh-CN,en-US,ru-RU`): Create `media/{lang}/` subfolder for **each** language in `LANGS` (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`)
@@ -147,6 +142,7 @@ Supported language codes: `zh-CN` (Simplified Chinese), `en-US` (English), `ru-R
 4. Copy the company logo files from this skill's `company_style/` directory:
    - **Single-language:** Copy to `media/`
    - **Multi-language:** Copy to **ALL** language subfolders (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`)
+5. Copy `mermaid.min.js` from this skill's `assets/` directory to the output's `scripts/` directory — **ALWAYS copy it**, regardless of whether the markdown contains Mermaid diagrams. This ensures Mermaid rendering works if diagrams are added later.
 
 ### Step 3: Translate and Convert Markdown to HTML
 
@@ -154,21 +150,21 @@ Supported language codes: `zh-CN` (Simplified Chinese), `en-US` (English), `ru-R
 
 **CRITICAL — Two-phase generation for anchor ID consistency:**
 
-**Phase A: Generate default language first.** Convert the default language (first in `LANGS`) to HTML first. This establishes the **canonical anchor IDs and TOC structure** that all other languages must match:
+**Phase A: Generate default language HTML first.** Generate the full `index-{DEFAULT_LANG}.html` file first. This establishes the **canonical anchor IDs and TOC structure** that all other languages must match:
 
 1. Parse the source markdown into semantic blocks
 2. Assign English anchor IDs to every heading (see Heading ID slugs rules below)
 3. Generate the body HTML and TOC HTML
-4. Save as `i18n/content-{DEFAULT_LANG}.js`
+4. Write the complete `index-{DEFAULT_LANG}.html` file with body HTML in `#content-container` and TOC HTML in `#toc-container` — all hardcoded in the file
 5. **Extract the anchor ID map** — a list of `{heading_level, heading_text, anchor_id}` tuples that records every heading's assigned anchor ID
 
-**Phase B: Generate other languages, reusing anchor IDs.** For every remaining language in `LANGS`:
+**Phase B: Generate other language HTML files, reusing anchor IDs.** For every remaining language in `LANGS`:
 
 1. Translate the markdown content (headings, paragraphs, tables, callouts, figure captions, mermaid labels) to the target language
 2. **For each heading, look up its anchor ID from Phase A's anchor ID map by heading position/index** — do NOT generate new anchor IDs independently. The mapping is positional: the 1st `h2` in the default language maps to the 1st `h2` in the target language, the 2nd `h3` maps to the 2nd `h3`, etc.
 3. Generate the body HTML using the **same anchor IDs as the default language**, with only the visible heading text translated
 4. Generate the TOC HTML using the **same anchor IDs and TOC structure** as the default language, with only the link text translated
-5. Save as `i18n/content-{LANG}.js`
+5. Write the complete `index-{LANG}.html` file with body HTML in `#content-container` and TOC HTML in `#toc-container` — all hardcoded
 
 **Why this order matters:** If each language is translated independently, the AI may generate different English anchor IDs for the same heading (e.g., "系统设置" → `system-settings` in zh-CN but `system-config` in en-US). Sequential generation with the default language as the authority prevents this divergence. Anchor IDs must be **byte-for-byte identical** across all language content files — not just semantically similar.
 
@@ -182,12 +178,15 @@ Supported language codes: `zh-CN` (Simplified Chinese), `en-US` (English), `ru-R
    - Do NOT translate: file paths, URLs, version strings, technical identifiers
    - The TOC HTML structure (heading hierarchy, nesting, class names) must match the default language byte-for-byte — only the visible link text changes
 
-**Single-language:** Skip translation. Convert the markdown directly to HTML following the rules below. Place body content directly in `#content-container` and TOC directly in `#toc-container` in `index.html`. No JS injection needed.
+**Single-language:** Skip translation. Convert the markdown directly to HTML following the rules below. Write a single `index.html` with body content hardcoded in `#content-container` and TOC hardcoded in `#toc-container`. No multi-file output, no redirector needed.
+
+**Skip `#` heading prefix from body content:** The `#` (h1) heading is the document title. In the body content, render it as `<h1>` with the `#` markdown prefix **removed** from the visible text. The h1 title text is also used for `<title>` and the header bar. The version line (`**版本：v1.1.136**`) immediately following the `#` heading goes in the header version span, not the body.
 
 **HTML conversion rules (apply per-language for multi-lang, once for single-lang):**
 
 | Markdown | HTML Output |
 |----------|------------|
+| `# Heading` | `<h1>` with `#` prefix stripped from visible text (e.g., `# 研知AI互动课堂` → `<h1>研知AI互动课堂</h1>`). The h1 has no `id` attribute. |
 | `## Heading` | `<h2>` with `id` attribute (slug) |
 | `### Heading` | `<h3>` with `id` attribute (slug) |
 | `**bold**` | `<strong>bold</strong>` |
@@ -232,8 +231,7 @@ message: feat: ...
 
 **Media path rewrite:** All media references must use relative paths:
 - **Single-language:** `media/{filename}`
-- **Multi-language (injected content):** Each language's content HTML uses its own path — `media/zh-CN/{filename}` in `I18N_CONTENT['zh-CN'].body`, `media/en-US/{filename}` in `I18N_CONTENT['en-US'].body`, etc.
-- **Multi-language (header/footer logos in `index.html`):** Default to `media/{DEFAULT_LANG}/{filename}` and add `data-src-{lang}` attributes for runtime switching
+- **Multi-language:** Each `index-{lang}.html` file uses `media/{{LANG}}/` paths hardcoded — content and logos all reference their own language subfolder. No `data-src-{lang}` attributes needed.
 
 **Screenshot image sizing:** All screenshot images (`<img>` inside `<figure>`) must use a fixed height with wide aspect ratio (5:8 = height:width, matching 1200×1920px source screenshots): `height: 450px; object-fit: contain; object-position: center; max-width: 720px; width: 100%`. The `height: 450px` ensures the browser reserves exactly 450px of vertical space **before** images load, preventing anchor scroll positions from drifting when lazy-loaded images arrive. The `max-width: 720px` matches the 5:8 ratio (450 × 8/5 = 720), giving screenshots a landscape/widescreen display. The `object-fit: contain` preserves aspect ratio without distortion. **Also add explicit `width` and `height` HTML attributes** to each `<img>` tag (obtain actual pixel dimensions via `sips` or similar tool) so the browser can compute the intrinsic aspect ratio even before CSS is applied.
 
@@ -273,37 +271,40 @@ Rationale: Screenshots and diagrams are informational content, not decorative el
 
 Generate a complete HTML page with the following structure and design specs. Styles and scripts should be external files referenced via relative paths from `index.html`:
 
-- **CSS files** go in `style/` directory (e.g., `style/main.css`, `style/components.css`)
-- **JS files** go in `scripts/` directory (e.g., `scripts/main.js`)
-- **i18n files** go in `i18n/` directory — two categories:
-  - **UI chrome** (`i18n/{lang}.js`): `data-i18n` translations for toc-title, footer-copyright, lang-switcher-label
-  - **Content** (`i18n/content-{lang}.js`): full body HTML and TOC HTML strings injected at runtime. One file per language.
-- **Mermaid.js** is loaded via CDN in the HTML `<head>` (no local copy needed)
+- **CSS files** go in `style/` directory (e.g., `style/main.css`)
+- **JS files** go in `scripts/` directory (`scripts/mermaid.min.js` + `scripts/main.js`)
+- **Mermaid.js** is bundled as a local file — copy `mermaid.min.js` from this skill's `assets/` directory to the output's `scripts/` directory. Reference it via `<script src="scripts/mermaid.min.js">` in each HTML file's `<head>`. NO CDN references allowed.
 - **Company logo images** are referenced from `media/` (single-lang) or `media/{lang}/` (multi-lang)
-
-All external files are referenced from `index.html` using relative paths (e.g., `<link rel="stylesheet" href="style/main.css">`, `<script src="scripts/main.js"></script>`, `<script src="i18n/zh-CN.js"></script>`).
+- **NO `i18n/` directory.** Each language has its own `index-{lang}.html` file with all text hardcoded in that language. No runtime content injection, no `data-i18n` attributes, no `I18N`/`I18N_CONTENT` globals.
+- All external files are referenced from each `index-{lang}.html` using relative paths (e.g., `<link rel="stylesheet" href="style/main.css">`, `<script src="scripts/main.js"></script>`)
 
 #### Page Structure
 
-- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title (`<span data-i18n="header-title">`), and version string. The menu icon toggles the sidebar fold/unfold. The page title text is translated via `data-i18n` — each language file provides its own `header-title` value. When multi-language is active (`LANGS` has >1 item), a **language switcher dropdown** sits in the **top-right corner** of the header.
-- **Sidebar** — fixed left navigation. Defaults to visible (280px width). Contains a `<div id="toc-container">` populated by JS with the current language's TOC HTML. When folded, the content area expands.
-- **Content** — main body area with max-width 900px, centered. Contains a `<div id="content-container">` populated by JS with the current language's body HTML. Has `margin-left: 280px` when sidebar is visible.
-- **Footer** — company logo and copyright
+Each `index-{lang}.html` file shares the same layout structure — only the text content differs:
+
+- **Header** — fixed top bar with menu toggle icon (☰) on the far left, followed by company logo, page title (hardcoded in the target language), and version string. The menu icon toggles the sidebar fold/unfold. When multi-language is active (`LANGS` has >1 item), a **language switcher dropdown** sits in the **top-right corner** of the header.
+- **Sidebar** — fixed left navigation. Defaults to visible (280px width). Contains a `<div id="toc-container">` with the TOC `<ul>` hardcoded in the target language. When folded, the content area expands.
+- **Content** — main body area with max-width 900px, centered. Contains a `<div id="content-container">` with all body HTML hardcoded in the target language. Has `margin-left: 280px` when sidebar is visible.
+- **Footer** — company logo and copyright (hardcoded in the target language)
 - **Back-to-top button** — fixed bottom-right, appears on scroll. **Pure icon button** (↑ or ▲)
 
 #### Template Placeholders
 
+Each `index-{lang}.html` is generated from a shared template with these placeholders:
+
 | Placeholder | Source |
 |-------------|--------|
-| `{{TITLE}}` | First `#` heading or filename |
+| `{{LANG}}` | Language code for this file (e.g., `zh-CN`, `en-US`). Used for `<html lang="{{LANG}}">`, media paths, and the language switcher. |
+| `{{PAGE_TITLE}}` | Browser `<title>` tag text — translated page title (first `#` heading or filename) in this language. Hardcoded, no JS switching. |
 | `{{VERSION}}` | Version string if found (e.g., "V2.3.0"), otherwise empty |
-| `{{BODY_CONTENT}}` | **Single-language only:** Converted HTML body from Step 3, placed directly in `#content-container`. **Multi-language:** empty string — content is injected by JS from `i18n/content-{lang}.js` |
-| `{{SIDEBAR_TOC}}` | **Single-language only:** Generated TOC `<ul>`, placed directly in `#toc-container`. **Multi-language:** empty string — TOC is injected by JS |
-| `{{DEFAULT_LANG}}` | First language code from `LANGS` (e.g., `zh-CN`) — used in JS init |
-| `{{LANGS_LIST}}` | Full `LANGS` string (e.g., `zh-CN,en-US,ru-RU`) — used for language switcher |
-| `{{UI_I18N_SCRIPTS}}` | `<script>` tags loading UI chrome i18n files (`i18n/zh-CN.js`, `i18n/en-US.js`). Empty if single-language. |
-| `{{CONTENT_SCRIPTS}}` | `<script>` tags loading content files (`i18n/content-zh-CN.js`, `i18n/content-en-US.js`). Empty if single-language. |
-| `{{LANG_SWITCHER}}` | HTML for language switcher dropdown select (empty if single-language) |
+| `{{BODY_CONTENT}}` | Converted HTML body from Step 3, placed directly in `#content-container`. Hardcoded in this language. |
+| `{{SIDEBAR_TOC}}` | Generated TOC `<ul>`, placed directly in `#toc-container`. Hardcoded in this language. |
+| `{{ALL_LANGS}}` | JSON array of all language codes in `LANGS` (e.g., `["zh-CN","en-US","ru-RU"]`) — used by the language switcher JS to build `<option>` elements |
+| `{{LANG_SWITCHER}}` | HTML for language switcher dropdown select with `<option>` elements for all languages (empty if single-language) |
+| `{{HEADER_TITLE}}` | Header bar title text in this language (e.g., `用户使用手册`, `User Manual`) — hardcoded |
+| `{{TOC_TITLE}}` | TOC sidebar title text in this language (e.g., `目录`, `Contents`) — hardcoded |
+| `{{FOOTER_COPYRIGHT}}` | Footer copyright text in this language — hardcoded |
+| `{{LANG_LABEL}}` | Language switcher label text in this language (e.g., `语言`, `Language`) — hardcoded |
 
 #### Layout Specs
 
@@ -363,7 +364,7 @@ After writing all output files:
 2. Check all external file references resolve correctly:
    - `<link rel="stylesheet" href="style/...">` → file exists in `style/`
    - `<script src="scripts/...">` → file exists in `scripts/`
-   - `<script src="i18n/...">` → file exists in `i18n/` (multi-language only)
+   - Each `index-{lang}.html` file exists for every language in `LANGS` (multi-language only)
 3. If any files are missing, warn the user with the list of missing files
 4. Report the output folder path to the user
 
@@ -384,20 +385,20 @@ Build the sidebar TOC from parsed headings:
   ```
   Nested `<ul>` elements (for `h3` sub-items) also must not show bullets — the `.toc-list li` rule covers them via inheritance, but add `.toc-list ul { list-style: none; padding-left: 16px; }` for safe measure.
 
-**Multi-language TOC:** Generate a separate TOC HTML string for each language. Each language's TOC uses identical anchor IDs but translated heading text. Save each TOC string as `I18N_CONTENT['{lang}'].toc` in the content file. At runtime, `switchLanguage()` injects the correct TOC HTML into `#toc-container`.
+**Multi-language TOC:** Generate a separate TOC `<ul>` for each language, hardcoded into each `index-{lang}.html` file's `#toc-container`. All files share identical anchor IDs but have translated link text.
 
 **Single-language TOC:** Output the TOC `<ul>` directly in `index.html` inside `#toc-container`. No JS injection needed.
 
 **Example TOC injected by JS (multi-language):**
 
 ```html
-<!-- Injected into #toc-container by switchLanguage('zh-CN') -->
+<!-- In index-zh-CN.html — hardcoded -->
 <ul class="toc-list">
   <li class="toc-h2"><a href="#system-settings">系统设置</a></li>
   <li class="toc-h3"><a href="#system-settings-export-path">导出路径</a></li>
 </ul>
 
-<!-- Injected into #toc-container by switchLanguage('en-US') -->
+<!-- In index-en-US.html — hardcoded -->
 <ul class="toc-list">
   <li class="toc-h2"><a href="#system-settings">System Settings</a></li>
   <li class="toc-h3"><a href="#system-settings-export-path">Export Path</a></li>
@@ -434,18 +435,18 @@ graph TD
 
 1. Convert each ```` ```mermaid ```` block to `<pre class="mermaid">` containing **only the Mermaid DSL** (no markdown fences)
 2. Do NOT wrap in `<code>` — the Mermaid library targets `<pre class="mermaid">` directly
-3. Include the Mermaid.js library via CDN in the HTML `<head>`:
+3. Copy `mermaid.min.js` from this skill's `assets/` directory to the output's `scripts/` directory. Reference it locally in the HTML `<head>`:
    ```html
-   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+   <script src="scripts/mermaid.min.js"></script>
    ```
 4. Initialize Mermaid. The approach depends on single-language vs multi-language:
 
-   **CRITICAL — Mermaid.js CDN must load BEFORE `scripts/main.js`.** In `index.html` `<head>`:
+   **CRITICAL — `scripts/mermaid.min.js` must load BEFORE `scripts/main.js`.** In `index.html` `<head>`:
    ```html
-   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+   <script src="scripts/mermaid.min.js"></script>
    <script src="scripts/main.js"></script>
    ```
-   The CDN script is synchronous — `mermaid` global is available when `scripts/main.js` runs.
+   The local script is synchronous — `mermaid` global is available when `scripts/main.js` runs.
 
    **Single-language** (content is inline in `index.html`):
    ```javascript
@@ -454,31 +455,10 @@ graph TD
    // startOnLoad: true auto-renders all pre.mermaid elements on DOMContentLoaded
    ```
 
-   **Multi-language** (content injected by JS at runtime):
-   - `mermaid.initialize({ startOnLoad: false })` — no `<pre class="mermaid">` exists in `index.html` at load time
-   - After `switchLanguage()` injects content HTML via `innerHTML`, call `mermaid.run()` on ALL `<pre class="mermaid">` elements in the newly injected content
-   - Mermaid internally tracks which elements have been processed — calling `mermaid.run()` on already-rendered elements is safe (no-ops)
-   - Since injected content is in a visible container, Mermaid measures correct dimensions — no `display:none` workaround needed
-   - **Multi-language mermaid labels:** Each language's content file (`i18n/content-{lang}.js`) contains its own `<pre class="mermaid">` with **translated node labels** in the Mermaid DSL. When `switchLanguage()` replaces content and calls `mermaid.run()`, the new language's diagram renders with translated text.
-
-   ```javascript
-   // In scripts/main.js:
-   mermaid.initialize({ startOnLoad: false, theme: 'default' });
-
-   async function renderMermaidInContent() {
-     const container = document.getElementById('content-container');
-     if (!container) return;
-     // Query ALL pre.mermaid — mermaid.run() internally skips already-processed ones
-     const elements = container.querySelectorAll('pre.mermaid');
-     if (elements.length > 0) {
-       await mermaid.run({ nodes: Array.from(elements) });
-     }
-   }
-   ```
+   **Multi-language:** Each `index-{lang}.html` file has `<pre class="mermaid">` elements hardcoded in its body. Same as single-language — use `startOnLoad: true`. No content injection, no `mermaid.run()` needed. **Multi-language mermaid labels:** Each `index-{lang}.html` contains its own `<pre class="mermaid">` with **translated node labels** in the Mermaid DSL.
 
    **Common Mermaid rendering failures and fixes:**
-   - **Mermaid CDN loaded AFTER main.js** → Mermaid global undefined at init time. Fix: `<script src="CDN">` BEFORE `<script src="scripts/main.js">` in `<head>`
-   - **`mermaid.run()` called before `innerHTML` DOM is ready** → elements exist but not yet laid out. Fix: call `mermaid.run()` synchronously after `innerHTML` — no `requestAnimationFrame` needed since `mermaid.run()` is async and awaits internal rendering
+   - **`scripts/mermaid.min.js` loaded AFTER main.js** → Mermaid global undefined at init time. Fix: `<script src="scripts/mermaid.min.js">` BEFORE `<script src="scripts/main.js">` in `<head>`
    - **Mermaid syntax errors in translated DSL** → non-English characters in node labels must use quotes: `A["中文标签"]`. Unquoted non-ASCII text causes parse failures
    - **Mermaid DSL contains special characters** → wrap labels in double quotes: `A["标签：设置"]`. Colons, parentheses, brackets in unquoted labels break the parser
 
@@ -506,7 +486,7 @@ graph TD
 4. Rewrite the `<img src>` in HTML:
    - **Single-language:** `media/{filename}`
    - **Multi-language (injected content):** `media/{lang}/{filename}` — each language's content HTML string uses its own path
-   - **Multi-language (header/footer logos in `index.html`):** `media/{DEFAULT_LANG}/{filename}` + `data-src-{lang}` attributes for runtime switching
+   - **Multi-language:** Each `index-{lang}.html` uses `media/{{LANG}}/` paths for all images including logos — hardcoded, no runtime switching needed
 
 **Non-image files (PDFs, docs):**
 
@@ -528,17 +508,17 @@ graph TD
 
 ## Multi-Language Support
 
-When `LANGS` contains more than one language (comma-separated), the generated HTML must include a full i18n (internationalization) system. When `LANGS` has only one language, skip all i18n — generate a single-language page directly in that language.
+When `LANGS` contains more than one language (comma-separated), generate a separate `index-{lang}.html` file for each language + an `index.html` redirector. When `LANGS` has only one language, generate a single `index.html` directly in that language.
 
 ### LANGS Variable
 
 `LANGS` is a comma-separated string of language codes. The **first language** in the list is the **default language** shown on first page load.
 
-| `LANGS` | Languages | i18n Required? |
-|---------|-----------|----------------|
-| `zh-CN` | Simplified Chinese only | ❌ No — single-language page |
-| `zh-CN,en-US,ru-RU` | Chinese (default), English, Russian | ✅ Yes — full i18n |
-| `en-US,zh-CN,ja-JP,ko-KR` | English (default), Chinese, Japanese, Korean | ✅ Yes — full i18n |
+| `LANGS` | Languages | Output |
+|---------|-----------|--------|
+| `zh-CN` | Simplified Chinese only | Single `index.html` |
+| `zh-CN,en-US,ru-RU` | Chinese (default), English, Russian | `index.html` redirector + 3× `index-{lang}.html` |
+| `en-US,zh-CN,ja-JP,ko-KR` | English (default), Chinese, Japanese, Korean | `index.html` redirector + 4× `index-{lang}.html` |
 
 ### Language Switching Widget
 
@@ -568,7 +548,7 @@ When multi-language is active, add a language switcher in the **top-right corner
 **Select HTML markup** for `{{LANG_SWITCHER}}` (generated in `index.html`):
 
 ```html
-<label data-i18n="lang-switcher-label" for="lang-select" class="lang-switch-label">语言</label>
+<label for="lang-select" class="lang-switch-label">{{LANG_LABEL}}</label>
 <select id="lang-select" class="lang-switch-select">
   <option value="zh-CN">🇨🇳 简体中文</option>
   <option value="en-US">🇺🇸 English</option>
@@ -576,9 +556,9 @@ When multi-language is active, add a language switcher in the **top-right corner
 </select>
 ```
 
-Only include `<option>` elements for languages present in `LANGS`. The `<label>` uses `data-i18n` — each `i18n/{lang}.js` file provides the `lang-switcher-label` translation (e.g., "语言", "Language", "Язык").
+Only include `<option>` elements for languages present in `LANGS`. The `<label>` text is hardcoded per language file — each `index-{lang}.html` uses `{{LANG_LABEL}}` to output the label in its own language (e.g., "语言", "Language", "Язык").
 
-**Flag and name data in JS** (in `scripts/main.js`, for use by `switchLanguage()` to validate and set the select value):
+**Flag and name data in JS** (in `scripts/main.js`, for use by `initLangSwitcher()` to build the `<select>` options):
 
 ```javascript
 // Language display metadata (flag emoji + native name)
@@ -592,189 +572,107 @@ const LANG_NAMES = {
 };
 ```
 
-### URL Language Parameter (`?lang=`)
+### URL Anchors and Language
 
-The HTML page must support a `?lang=` URL query parameter to set the display language on page load. This allows linking directly to a specific language version (e.g., `manual.html?lang=en-US`).
+Language is encoded in the **filename**, not URL parameters. Anchors work cleanly without `?lang=` conflicts:
 
-**Priority (highest to lowest) on page load:**
+| URL | Meaning |
+|-----|---------|
+| `index-zh-CN.html#system-login` | Chinese page, scrolls to `#system-login` |
+| `index-en-US.html#ai-analysis` | English page, scrolls to `#ai-analysis` |
+| `index.html#system-login` | Redirector → redirects to saved/default language page with anchor preserved |
 
-1. **URL `?lang=` parameter** — highest priority; overrides everything else
-2. **`localStorage` saved preference** (`manual-lang` key) — used when no URL param
-3. **Default language** (first language in `LANGS`) — final fallback
+**`index.html` redirector priority:**
 
-**Behavior:**
-- `?lang=zh-CN` → display Chinese version (UI chrome + content blocks + images)
-- `?lang=en-US` → display English version
-- `?lang=ru-RU` → display Russian version
-- Unsupported/invalid language code → fall through to localStorage, then default
-- No `?lang=` parameter → use localStorage, then default
+1. **`localStorage` saved preference** (`manual-lang` key) → redirect to `index-{lang}.html#anchor`
+2. **Default language** (first in `LANGS`) → redirect to `index-{DEFAULT_LANG}.html#anchor`
 
-**Combined `#` anchor + `?lang=` parameter:**
+**Anchor handling on page load:** Each `index-{lang}.html` file has content hardcoded — anchor targets exist in the DOM at `DOMContentLoaded`. Use `requestAnimationFrame` ×2 to defer scroll until layout is complete.
 
-When the URL contains both a hash anchor and a language parameter (e.g., `manual.html?lang=zh-CN#system-settings-export-path`), the page must:
+### Hardcoded Content Per File
 
-1. **Apply language first** — read `?lang=` and `await switchLanguage()` to inject correct content HTML + UI chrome
-2. **Then scroll to anchor** — after content is injected and Mermaid diagrams are rendered, scroll the target heading into view with proper offset (64px header + 16px padding = 80px)
-3. Use `await` on `switchLanguage()` (it's async — waits for Mermaid rendering) + double `requestAnimationFrame` to defer anchor scroll
-4. If the anchor target doesn't exist, silently do nothing
+Each `index-{lang}.html` file has ALL text hardcoded in its target language. No `data-i18n` attributes, no `I18N` globals, no runtime content injection. This is the HTML equivalent of "compile-time constants" — each file is a complete, standalone page.
 
-The implementation is in the `DOMContentLoaded` handler in [Language Switching Implementation](#language-switching-implementation) below — it `await`s `switchLanguage()`, then defers anchor scrolling.
-	
-	### data-i18n Attributes
+**UI chrome text** (header title, TOC title, footer copyright, language switcher label) is hardcoded directly in the HTML template per file:
 
-All localizable UI chrome text must use `data-i18n` attributes. Each translatable element gets a unique key:
-
+**`index-zh-CN.html`** (Chinese — hardcoded):
 ```html
-<span data-i18n="header-title">用户使用手册</span>
-<span data-i18n="toc-title">目录</span>
-<p data-i18n="footer-copyright">© 2026 研知教育科技 版权所有</p>
+<html lang="zh-CN">
+<head><title>用户使用手册</title></head>
+<body>
+  <header>
+    <span class="header-title">用户使用手册</span>
+  </header>
+  <aside id="sidebar">
+    <h3 class="toc-title">目录</h3>
+    <div id="toc-container"><!-- TOC hardcoded in Chinese --></div>
+  </aside>
+  <div id="content-container"><!-- body content hardcoded in Chinese --></div>
+  <footer><p>© 2026 研知教育科技 版权所有</p></footer>
+  <label>语言</label>
+  <select class="lang-switch-select">
+    <option value="zh-CN">🇨🇳 简体中文</option>
+    <option value="en-US">🇺🇸 English</option>
+  </select>
+</body>
+</html>
 ```
 
-The initial text content (before any JS runs) must be in the **default language** (first in `LANGS`). The i18n system replaces it on language switch.
-
-**Note:** The sidebar toggle button (☰) and back-to-top button (↑) are pure icons with no visible text — they do NOT use `data-i18n` and have no translatable text. They may have `aria-label` attributes for screen readers but no visible labels.
-
-### Translation Files (External i18n JS)
-
-Translation text for UI chrome (data-i18n elements) is stored in **separate JavaScript files** under the `i18n/` directory — one file per language. Each file defines a `I18N[LANG]` object on the global `I18N` namespace:
-
-**`i18n/zh-CN.js`** (Chinese):
-```javascript
-I18N['zh-CN'] = {
-  'header-title': '用户使用手册',
-  'toc-title': '目录',
-  'footer-copyright': '© 2026 研知教育科技 版权所有',
-  'lang-switcher-label': '语言'
-};
+**`index-en-US.html`** (English — hardcoded):
+```html
+<html lang="en-US">
+<head><title>User Manual</title></head>
+<body>
+  <header>
+    <span class="header-title">User Manual</span>
+  </header>
+  <aside id="sidebar">
+    <h3 class="toc-title">Contents</h3>
+    <div id="toc-container"><!-- same TOC structure, different text --></div>
+  </aside>
+  <div id="content-container"><!-- same body structure, different text --></div>
+  <footer><p>© 2026 WisQuest EdTech. All rights reserved.</p></footer>
+  <label>Language</label>
+  <select class="lang-switch-select">
+    <option value="zh-CN">🇨🇳 简体中文</option>
+    <option value="en-US">🇺🇸 English</option>
+  </select>
+</body>
+</html>
 ```
 
-**`i18n/en-US.js`** (English):
-```javascript
-I18N['en-US'] = {
-  'header-title': 'User Manual',
-  'toc-title': 'Contents',
-  'footer-copyright': '© 2026 WisQuest EdTech. All rights reserved.',
-  'lang-switcher-label': 'Language'
-};
-```
-
-**`i18n/ru-RU.js`** (Russian):
-```javascript
-I18N['ru-RU'] = {
-  'header-title': 'Руководство пользователя',
-  'toc-title': 'Содержание',
-  'footer-copyright': '© 2026 WisQuest EdTech. Все права защищены.',
-  'lang-switcher-label': 'Язык'
-};
-```
-
-**Key rules for i18n files:**
-- Each file MUST define translations for ALL `data-i18n` keys used in the page
-- Keys are identical across all language files (same set of `data-i18n` keys)
-- The global `I18N` object is initialized in `scripts/main.js` before any i18n files are loaded: `const I18N = {};`
-- i18n files are loaded AFTER `scripts/main.js` and BEFORE the `DOMContentLoaded` handler fires
-- No `fold-sidebar` / `expand-sidebar` / `back-to-top` keys — sidebar toggle and back-to-top buttons are pure icons with no text
-- The `index.html` `<head>` loads i18n files as: `<script src="i18n/zh-CN.js"></script>` etc.
-
-### Content Files (`i18n/content-{lang}.js`)
-
-When `LANGS` has multiple languages, ALL manual content text (headings, paragraphs, tables, figures, callouts, code blocks) and sidebar TOC HTML are stored in content JS files — NOT in `index.html`. Each language gets its own content file.
-
-**`i18n/content-zh-CN.js`** (Chinese content):
-```javascript
-I18N_CONTENT['zh-CN'] = {
-  toc: '<ul class="toc-list">' +
-    '<li class="toc-h2"><a href="#system-settings">系统设置</a></li>' +
-    '<li class="toc-h3"><a href="#system-settings-export-path">导出路径</a></li>' +
-    '</ul>',
-  body: '<h2 id="system-settings">系统设置</h2>' +
-    '<p>这是系统设置页面的详细说明...</p>' +
-    '<figure>' +
-    '<img src="media/zh-CN/1-settings.png" alt="系统设置" height="1920" width="1200">' +
-    '<figcaption>图1：系统设置</figcaption>' +
-    '</figure>' +
-    '<pre class="mermaid">graph LR\n  A[开始] --> B[结束]</pre>'
-};
-```
-
-**Key rules for content files:**
-- Each file defines `I18N_CONTENT['{lang}']` with two properties: `toc` (sidebar TOC HTML string) and `body` (full content HTML string)
-- Content HTML follows ALL the same conversion rules as Step 3 (headings, figures, callouts, tables, Mermaid, etc.)
-- Images use `media/{lang}/` paths — language-specific media
-- Anchor IDs are identical across all language content files
-- `I18N_CONTENT` global is initialized in `scripts/main.js` as `const I18N_CONTENT = {};`
-- Content files are loaded AFTER `scripts/main.js` but BEFORE the `DOMContentLoaded` handler
-- The `index.html` `<head>` loads content files as: `<script src="i18n/content-zh-CN.js"></script>` etc.
-- `index.html` itself contains ZERO manual content text — only layout shells with empty container divs
-- **Single-language pages** skip content files entirely — content goes directly in `index.html`
+**Key rules:**
+- Each file is self-contained — NO `data-i18n`, NO `I18N`, NO `I18N_CONTENT`, NO `switchLanguage()`
+- Anchor IDs are byte-for-byte identical across all files (guaranteed by Phase A/B sequential generation)
+- Images use `media/{{LANG}}/` paths — each file references its own language subfolder
+- Logos use hardcoded `media/{{LANG}}/` paths — no `data-src-{lang}` needed
+- Sidebar toggle (☰) and back-to-top (↑) are pure icons — identical across all files, no translation needed
+- `scripts/main.js` is shared by all files (same relative path `scripts/main.js` from each HTML file)
+- Language switcher dropdown has ALL languages as `<option>` elements in every file; the current language is pre-selected by `initLangSwitcher()`
 
 ### Language Switching Implementation
 
-The page logic (`scripts/main.js`) initializes namespaces and handles language switching. All text content is injected at runtime — `index.html` contains only empty container divs.
+Each language has its own `index-{lang}.html` file with all content hardcoded. Language switching is a **page navigation** — the dropdown's `onchange` navigates to the other language's file, preserving the current `#anchor`. No runtime content injection, no `data-i18n`, no `I18N` globals.
 
-**`scripts/main.js`** — core page logic:
+**`scripts/main.js`** — shared by all `index-{lang}.html` files:
 
 ```javascript
-// Global namespaces (populated by external i18n files)
-const I18N = {};
-const I18N_CONTENT = {};
+// Mermaid init — content is in the file at load time, no injection needed
+mermaid.initialize({ startOnLoad: true, theme: 'default' });
 
-// Mermaid init (render after content is injected into visible containers)
-mermaid.initialize({ startOnLoad: false, theme: 'default' });
-
-async function renderMermaidInContent() {
-  const container = document.getElementById('content-container');
-  if (!container) return;
-  const elements = container.querySelectorAll('pre.mermaid');
-  if (elements.length > 0) {
-    await mermaid.run({ nodes: Array.from(elements) });
-  }
-}
-
-async function switchLanguage(lang) {
-  if (!I18N[lang]) return;
-  document.documentElement.lang = lang === 'zh-CN' ? 'zh-CN' : lang;
-
-  // 1. Switch UI chrome text (data-i18n)
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (I18N[lang] && I18N[lang][key]) {
-      el.textContent = I18N[lang][key];
-    }
-  });
-
-  // 2. Inject content HTML into containers (replaces all previous content)
-  if (I18N_CONTENT[lang]) {
-    const contentEl = document.getElementById('content-container');
-    const tocEl = document.getElementById('toc-container');
-    if (contentEl) contentEl.innerHTML = I18N_CONTENT[lang].body;
-    if (tocEl) tocEl.innerHTML = I18N_CONTENT[lang].toc;
-  }
-
-  // 3. Switch header/footer logo src (outside injected content)
-  document.querySelectorAll('img[data-src-zh-CN]').forEach(img => {
-    const newSrc = img.getAttribute('data-src-' + lang);
-    if (newSrc) img.src = newSrc;
-  });
-
-  // 4. Re-bind TOC link handlers (TOC HTML was replaced)
-  initTocLinks();
-
-  // 5. Render Mermaid diagrams in newly injected content (visible container, no display:none issue)
-  await renderMermaidInContent();
-
-  localStorage.setItem('manual-lang', lang);
-  const url = new URL(window.location);
-  url.searchParams.set('lang', lang);
-  window.history.replaceState({}, '', url);
-  // Update dropdown select value
+// Language switcher — navigate to other language file, preserving anchor
+function initLangSwitcher() {
   const select = document.querySelector('.lang-switch-select');
-  if (select) select.value = lang;
-}
-
-function getUrlLang() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('lang');
+  if (!select) return;
+  // Set current value to match this file's language
+  const currentLang = document.documentElement.lang;
+  select.value = currentLang;
+  select.addEventListener('change', (e) => {
+    const lang = e.target.value;
+    const anchor = window.location.hash;
+    localStorage.setItem('manual-lang', lang);
+    window.location.href = 'index-' + lang + '.html' + (anchor || '');
+  });
 }
 
 // Sidebar toggle (icon-only button, no text)
@@ -809,7 +707,7 @@ function initBackToTop() {
   });
 }
 
-// TOC link click handling (re-bound after each language switch)
+// TOC link click handling (smooth scroll with header offset)
 function initTocLinks() {
   document.querySelectorAll('.toc-list a[href^="#"]').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -824,28 +722,13 @@ function initTocLinks() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const urlLang = getUrlLang();
-  const saved = localStorage.getItem('manual-lang');
-  const defaultLang = '{{DEFAULT_LANG}}';
-
-  const lang = (urlLang && I18N[urlLang]) ? urlLang
-    : (saved && I18N[saved]) ? saved
-    : defaultLang;
-
-  await switchLanguage(lang);
+document.addEventListener('DOMContentLoaded', () => {
+  initLangSwitcher();
   initSidebarToggle();
   initBackToTop();
+  initTocLinks();
 
-  // Language select dropdown change handler
-  const langSelect = document.querySelector('.lang-switch-select');
-  if (langSelect) {
-    langSelect.addEventListener('change', (e) => {
-      switchLanguage(e.target.value);
-    });
-  }
-
-  // Anchor scroll AFTER content + Mermaid are fully rendered
+  // Anchor scroll on page load (content is already in the file, no injection delay)
   if (window.location.hash) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -860,50 +743,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 ```
 
-**Note:** Sidebar toggle (☰) and back-to-top (↑) are pure icons with no text. All content text lives in `i18n/content-{lang}.js` files. `index.html` contains only empty `<div id="content-container">` and `<div id="toc-container">` shells. Mermaid init and `renderMermaidInContent()` are in `scripts/main.js` — no separate `mermaid-init.js` needed.
-
-**Image src switching for header/footer logos:** Logos in `index.html` (header, footer) are NOT part of injected content — they must use `data-src-{lang}` attributes for runtime switching:
+**`index.html` — redirector page** (multi-language only): A minimal page that reads `localStorage` and redirects to the correct language file:
 
 ```html
-<!-- Header logo with language-specific src switching -->
-<img src="media/zh-CN/wisquest_horizontal_logo.png"
-     data-src-zh-CN="media/zh-CN/wisquest_horizontal_logo.png"
-     data-src-en-US="media/en-US/wisquest_horizontal_logo.png"
-     data-src-ru-RU="media/ru-RU/wisquest_horizontal_logo.png"
-     alt="Logo" class="header-logo">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script>
+    const saved = localStorage.getItem('manual-lang');
+    const lang = saved || '{{DEFAULT_LANG}}';
+    const anchor = window.location.hash;
+    window.location.replace('index-' + lang + '.html' + (anchor || ''));
+  </script>
+</head>
+<body><p>Redirecting...</p></body>
+</html>
 ```
 
-Images in injected content HTML use `media/{lang}/` paths directly — no `data-src-{lang}` needed since the entire content HTML is replaced on language switch.
-
-### Content Translation (Markdown Body)
-
-**ALL markdown content must be translated into every target language.** The source markdown (usually Chinese) is translated during HTML generation (Step 3), and the output HTML contains ALL language versions of the content. The i18n system handles BOTH **UI chrome** and **body content visibility**.
-
-| Element | i18n? | Mechanism |
-|---------|-------|-----------|
-| Header title ("用户使用手册") | ✅ Yes | `data-i18n="header-title"` in the header bar `<span>` |
-| TOC heading ("目录") | ✅ Yes | `data-i18n="toc-title"` |
-| Back-to-top button | ❌ No | Pure icon (↑), no text |
-| Footer copyright | ✅ Yes | `data-i18n` |
-| Language switcher labels | ✅ Yes | `data-i18n` |
-| Sidebar toggle button | ❌ No | Pure icon (☰), no text |
-| Sidebar TOC items (link text) | ✅ Yes | Injected via `innerHTML` from `I18N_CONTENT[lang].toc` |
-| Body content (headings, paragraphs, tables, captions) | ✅ Yes | Injected via `innerHTML` from `I18N_CONTENT[lang].body` |
-| Images in content (`<img src>`) | ✅ Yes | Each language's content HTML uses `media/{lang}/` paths |
-| Header/footer logos | ✅ Yes | `data-src-{lang}` attributes on `<img>` tags in `index.html` |
-
-### Multi-Language Content Structure
-
-When `LANGS` has multiple languages, ALL content text is stored in external JS files and injected at runtime. **There are NO `.lang-content` blocks in `index.html`.**
-
-- **`index.html`** contains only empty container divs: `<div id="content-container"></div>` and `<div id="toc-container"></div>`
-- **`i18n/content-{lang}.js`** files (one per language) contain the full HTML strings injected into these containers
-- **`switchLanguage()`** calls `innerHTML` to replace content, then re-binds TOC handlers and renders Mermaid diagrams
-- See [Content Files](#content-files-i18ncontent-langjs) for the file format and [Language Switching Implementation](#language-switching-implementation) for the injection logic
+**Key rules:**
+- Language switcher `onchange` sets `localStorage` then navigates via `window.location.href` (not `replaceState` — this is a real page change)
+- Current `#anchor` is preserved when switching languages (appended to the new URL)
+- `index.html` uses `window.location.replace()` so the redirector doesn't appear in browser history
+- `localStorage` key: `manual-lang` — stores last selected language code
+- Each `index-{lang}.html` has `<html lang="{{LANG}}">` with the correct language code hardcoded
+- No `data-i18n`, no `I18N`, no `I18N_CONTENT`, no `switchLanguage()`, no `getUrlLang()`, no `data-src-{lang}` — all text and image paths are hardcoded per file
+- Logos use `media/{{LANG}}/` paths hardcoded in each file — no `data-src-{lang}` needed
+- Mermaid uses `startOnLoad: true` since all `<pre class="mermaid">` elements are in the file at DOM ready — no `mermaid.run()` needed
+- Sidebar toggle, back-to-top, and TOC link handlers are the same for all languages (no text, no translation needed)
 
 ### Company Name Rules
 
-**CRITICAL — Company name must match the active language:**
+**CRITICAL — Company name must match each language file:**
 
 | Language | Company Name | Footer Copyright |
 |----------|-------------|------------------|
@@ -912,15 +783,15 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | `ru-RU` (Russian) | WisQuest EdTech | © 2026 WisQuest EdTech. Все права защищены. |
 | Any other non-Chinese | WisQuest EdTech | © 2026 WisQuest EdTech. All rights reserved. |
 
-**Key rule: 研知教育科技 is ONLY used in the Chinese (`zh-CN`) version. All non-Chinese versions MUST use `WisQuest EdTech`.** This applies to footer copyright, page title, and any company name reference in the UI chrome.
+**Key rule: 研知教育科技 is ONLY used in the Chinese (`zh-CN`) version. All non-Chinese versions MUST use `WisQuest EdTech`.** Each `index-{lang}.html` file has the correct company name hardcoded for its language.
 
 ### No Chinese in Non-Chinese Content
 
-**CRITICAL:** When generating the i18n translation files for non-Chinese languages:
-- NEVER include Chinese characters (汉字) in English, Russian, or any other non-Chinese translation strings
+**CRITICAL:** When generating non-Chinese `index-{lang}.html` files:
+- NEVER include Chinese characters (汉字) in English, Russian, or any other non-Chinese text
 - The company name in all non-Chinese versions is `WisQuest EdTech` (English), NOT `研知教育科技`
-- Verify every translation value is in the correct script for that language
-- The `<html lang>` attribute must reflect the current language: `zh-CN` for Chinese, the bare language code otherwise
+- Verify every text string is in the correct script for that language
+- Each `index-{lang}.html` has `<html lang="{{LANG}}">` — `zh-CN` for Chinese, the bare language code otherwise
 
 ## Output Structure
 
@@ -928,10 +799,11 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 
 ```
 {manual-name}-html/
-├── index.html          # Layout + inline content (no JS injection needed)
+├── index.html          # Complete page with content hardcoded
 ├── style/
 │   └── main.css        # All page styles
 ├── scripts/
+│   ├── mermaid.min.js   # Mermaid.js library (copied from skill assets/)
 │   └── main.js          # Page logic (sidebar, back-to-top, TOC links, anchor scroll)
 └── media/              # Flat media directory
     ├── 1-login.png
@@ -943,44 +815,49 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 
 ```
 {manual-name}-html/
-├── index.html          # Layout shells ONLY — empty #content-container and #toc-container
+├── index.html              # Redirector — reads localStorage, redirects to index-{lang}.html
+├── index-zh-CN.html        # Chinese page — all content hardcoded
+├── index-en-US.html        # English page — all content hardcoded
+├── index-ru-RU.html        # Russian page — all content hardcoded
 ├── style/
-│   └── main.css        # All page styles
+│   └── main.css            # Shared stylesheet (all files reference the same file)
 ├── scripts/
-│   └── main.js          # Page logic (i18n, content injection, sidebar, Mermaid, TOC)
-├── i18n/
-│   ├── zh-CN.js            # Chinese UI chrome (toc-title, footer-copyright, etc.)
-│   ├── en-US.js            # English UI chrome
-│   ├── ru-RU.js            # Russian UI chrome
-│   ├── content-zh-CN.js    # Chinese body HTML + TOC HTML strings
-│   ├── content-en-US.js    # English body HTML + TOC HTML strings
-│   └── content-ru-RU.js    # Russian body HTML + TOC HTML strings
+│   ├── mermaid.min.js       # Mermaid.js library (copied from skill assets/)
+│   └── main.js              # Shared page logic (lang switcher, sidebar, back-to-top, TOC)
 └── media/
-    ├── zh-CN/             # Chinese media
-    ├── en-US/             # English media (same screenshots, copied)
-    └── ru-RU/             # Russian media (same screenshots, copied)
+    ├── zh-CN/               # Chinese media
+    │   ├── 1-login.png
+    │   ├── wisquest_horizontal_logo.png
+    │   └── ...
+    ├── en-US/               # English media (same screenshots, copied)
+    │   ├── 1-login.png
+    │   ├── wisquest_horizontal_logo.png
+    │   └── ...
+    └── ru-RU/               # Russian media (same screenshots, copied)
+        ├── 1-login.png
+        ├── wisquest_horizontal_logo.png
+        └── ...
 ```
 
-**Key rule:** `index.html` for multi-language contains ZERO manual content text — only layout. All content is in `i18n/content-{lang}.js` files and injected at runtime. This keeps `index.html` small regardless of document size.
+**Key rule:** Each `index-{lang}.html` is a complete, standalone page with all content hardcoded in its language. No `i18n/` directory, no runtime content injection, no `data-i18n`. `style/` and `scripts/` are shared — all HTML files reference the same CSS/JS via relative paths.
 
 **File splitting conventions:**
-- CSS: `style/main.css` (or split into `layout.css`, `components.css`)
-- JS: `scripts/main.js` (all logic in one file for simplicity)
-- i18n UI chrome: `i18n/{lang}.js` — one file per language
-- i18n content: `i18n/content-{lang}.js` — one file per language (multi-language only)
+- CSS: `style/main.css` — shared by all language files
+- JS: `scripts/mermaid.min.js` + `scripts/main.js` — shared by all language files
+- HTML: `index-{lang}.html` per language + `index.html` redirector — each is a complete standalone page
 - All files referenced from `index.html` using relative paths
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| External CSS/JS/i18n files not created | Generate all external files (`style/*.css`, `scripts/*.js`, `i18n/*.js`) alongside `index.html` |
-| Wrong relative paths to external files | Use relative paths from `index.html`: `style/main.css`, `scripts/main.js`, `i18n/zh-CN.js` |
+| External CSS/JS files not created | Generate all shared external files (`style/*.css`, `scripts/*.js`) alongside the HTML files |
+| Wrong relative paths to external files | Use relative paths from each `index-{lang}.html`: `style/main.css`, `scripts/main.js` (CSS/JS are shared by all language files) |
 | Absolute paths for media or external files | Always use relative paths for all local resources |
 | Missing heading IDs | Every heading needs an `id` for TOC linking |
 | Forgetting to copy logos | Always copy all `company_style/` files |
 | Not handling duplicate heading text | Append `-2`, `-3` etc. to duplicate slugs |
-| Using non-Chinese UI text | Default to Simplified Chinese for all chrome text |
+| UI text in wrong language for a file | Each `index-{lang}.html` must have ALL text (chrome + content) in its language. zh-CN uses Chinese, en-US uses English, etc. |
 | Overwriting original markdown | Output to a new folder, never modify the source |
 | Large images not optimized | Consider warning user if images exceed 2MB |
 | Missing print styles | Include `@media print` in `style/main.css` to hide navigation elements |
@@ -991,7 +868,7 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | Dark text on dark background | Use white/light text on any dark-colored element |
 | TOC section duplicated in body | Sidebar already shows TOC — omit "目录" sections from content |
 | Screenshot index table included in HTML | Omit "截图索引" section entirely — it's a build-time reference, not end-user content |
-| Outputting raw Mermaid code in HTML | Convert ```` ```mermaid ```` blocks to `<pre class="mermaid">` with CDN + initialization |
+| Outputting raw Mermaid code in HTML | Convert ```` ```mermaid ```` blocks to `<pre class="mermaid">` with local `scripts/mermaid.min.js` + initialization |
 | Button icon descriptions not converted to tables | Detect "图标说明" sections by content (icon-description text + image links), not by markdown format. Convert to clean 2-column tables (图标 \| 名称) with `.icon-inline` class |
 | Anchor scroll hidden behind fixed header | Add `scroll-margin-top: 80px` to all `h2` and `h3` headings |
 | Lazy images shift anchor scroll position | Give screenshot `<img>` explicit `width`/`height` attrs + CSS `height: 450px; max-width: 720px; object-fit: contain` |
@@ -1011,57 +888,44 @@ When `LANGS` has multiple languages, ALL content text is stored in external JS f
 | Anchor IDs use pinyin (e.g., `xi-tong-deng-lu`) | Translate Chinese headings to actual English words, not pinyin — e.g., `system-login` not `xi-tong-deng-lu` |
 | Anchor IDs use transliteration for non-Chinese languages (e.g., `nastroiki` for Russian "Настройки", `settei` for Japanese "設定") | ALL headings in ANY language must be translated to English meaning — use `settings`, not transliteration. The anchor ID format is always lowercase English words with hyphen separators, regardless of the content language |
 | Anchor IDs contain non-English script characters (Cyrillic, Kanji, Hangul, Arabic, etc.) | Translate ALL heading text to English for anchor IDs — Russian "Настройки системы" → `system-settings`, Japanese "設定" → `settings`, Korean "설정" → `settings`, Arabic "إعدادات" → `settings` |
-| URL `?lang=` parameter not supported | Implement `getUrlLang()` using `URLSearchParams`. On page load, check URL param with priority: URL `?lang=` > localStorage > default language |
-| Combined `#anchor` + `?lang=` URL not handled correctly | When URL has both `?lang=zh-CN#some-anchor`, apply language FIRST via `switchLanguage()`, then scroll to anchor via `requestAnimationFrame` (double frame to ensure DOM is stable). Wrong order (scroll before language) causes anchor to miss target |
-| Anchor scroll on combined `?lang=` + `#` fires before i18n DOM updates complete | Use nested `requestAnimationFrame` to defer anchor scrolling until after language switch re-renders all `data-i18n` elements. Single frame may fire before DOM updates paint |
+| `?lang=` URL parameter used instead of filename | Language is encoded in the filename — use `index-{lang}.html` files. No `?lang=` parameter anywhere |
+| `index.html` not redirecting on multi-language | Multi-language `index.html` must be a redirector that reads `localStorage` and redirects to `index-{lang}.html` |
+| Anchor lost on language switch | Language switcher appends `window.location.hash` to the new URL: `'index-' + lang + '.html' + (anchor \|\| '')` |
 | Language selection not asked before HTML generation | Step 0 is MANDATORY — always ask the user for language preferences before any other work |
-| i18n not implemented when `LANGS` has multiple languages | When `LANGS` contains a comma, implement full `data-i18n` + language switcher + i18n external files |
+| Multi-language but only one HTML file generated | When `LANGS` contains a comma, generate one `index-{lang}.html` per language + `index.html` redirector |
 | Language switcher missing or in wrong position | Language switcher must be in the **top-right corner of the header**, to the right of the version string |
 | Language switcher uses buttons instead of dropdown select | Use a `<select>` dropdown (`.lang-switch-select`) with `<option>` elements. Each option shows flag emoji on the left and language name on the right (e.g., `🇨🇳 简体中文`, `🇺🇸 English`) |
 | Language preference not persisted across page loads | Save to `localStorage` (key: `manual-lang`) and restore on page load |
-| Chinese company name in non-Chinese translations | `研知教育科技` ONLY in `zh-CN`. All non-Chinese versions use `WisQuest EdTech` |
-| Chinese characters appear in non-Chinese i18n strings | Verify every non-Chinese translation value contains no 汉字 — use only the target language's script |
-| `<html lang>` not updated on language switch | Update `document.documentElement.lang` when switching languages |
-| `data-i18n` initial text not in default language | The HTML body's initial text content must match the default language (first in `LANGS`) |
+| Chinese company name in non-Chinese files | `研知教育科技` ONLY in `index-zh-CN.html`. All non-Chinese files use `WisQuest EdTech` |
+| Chinese characters appear in non-Chinese HTML files | Verify every non-Chinese `index-{lang}.html` contains no 汉字 — use only the target language's script |
+| `<html lang>` wrong in language file | Each `index-{lang}.html` must have `<html lang="{{LANG}}">` hardcoded with the correct value |
+| Content in wrong language in HTML file | Each `index-{lang}.html` has ALL text hardcoded in its language — spot-check headings, footer, and TOC |
 | Multi-language HTML but media not isolated per language | When `LANGS` has >1 language, create `media/{lang}/` subfolders for each language and copy screenshots + logos to ALL subfolders |
 | Multi-language HTML uses flat `media/` structure | Multi-language mode requires `media/{lang}/` structure; flat `media/` without language subfolders is only for single-language mode |
 | Screenshots not copied to all language subfolders in multi-lang mode | Every screenshot must be copied to ALL language media subfolders (e.g., `media/zh-CN/`, `media/en-US/`, `media/ru-RU/`) |
 | Media `src` paths don't include language prefix in multi-lang mode | Use `media/{DEFAULT_LANG}/{filename}` for all image/link paths when multi-language |
 | Logos only copied to default language folder in multi-lang mode | Copy logos to ALL language subfolders — each language needs its own complete media set |
-| Markdown content not translated into all target languages | Translate full markdown into each language. Save each as `I18N_CONTENT['{lang}'].body` in `i18n/content-{lang}.js` |
-| Content hardcoded in `index.html` for multi-language page | `index.html` must contain ONLY layout shells. ALL content text goes in `i18n/content-{lang}.js` files and is injected at runtime |
-| `I18N_CONTENT` global not initialized | `scripts/main.js` must contain `const I18N_CONTENT = {};` before any content files are loaded |
-| Content files missing `toc` or `body` property | Each `I18N_CONTENT['{lang}']` must define both `toc` (sidebar TOC HTML) and `body` (full content HTML) |
-| Content not injected on language switch | `switchLanguage()` Step 2 must set `#content-container.innerHTML` and `#toc-container.innerHTML` from `I18N_CONTENT[lang]` |
-| TOC link handlers not re-bound after content injection | Call `initTocLinks()` after injecting new content HTML — old event listeners are lost when `innerHTML` replaces DOM |
-| Mermaid diagrams not rendered after content injection | Call `mermaid.run()` on newly injected `<pre class="mermaid">` elements. Since content is in a visible container, no `display:none` workaround needed |
-| Mermaid init uses `startOnLoad: true` for multi-language | Use `startOnLoad: false` + call `mermaid.run()` after content injection. No diagrams exist in `index.html` at load time |
-| Anchor scroll fires before content injection completes | Defer anchor scroll until after `await switchLanguage()` completes (content + Mermaid fully rendered) |
-| Heading `id` attributes differ between language content files | Keep `id` identical across all `I18N_CONTENT` language files — anchors must resolve regardless of active language |
-| Each language content file generated independently with different anchor IDs | Generate default language FIRST, extract anchor ID map, then generate other languages reusing the same IDs by positional mapping. Never translate and assign anchors independently per language |
-| Anchor IDs semantically similar but not byte-for-byte identical (e.g., `system-settings` vs `system-config`) | Must be byte-for-byte identical. Generate default language first, record exact anchor IDs, reuse in other languages |
-| Images in header/footer don't switch on language change | Logos in `index.html` need `data-src-{lang}` attributes. `switchLanguage()` Step 3 swaps `src` |
-| Images in injected content use wrong paths | Each language's content HTML uses `media/{lang}/` paths. No `data-src-{lang}` needed for injected images |
-| Single-language page has empty containers (no content) | Single-language pages place content directly in `index.html`. Only multi-language uses JS injection |
-| Sidebar TOC items hardcoded in `index.html` (multi-lang) | Multi-language TOC is injected via `I18N_CONTENT[lang].toc` into `#toc-container`. `index.html` TOC container starts empty |
-| Sidebar TOC text doesn't change on language switch | Ensure `switchLanguage()` injects `I18N_CONTENT[lang].toc` into `#toc-container` and re-binds `initTocLinks()` |
-| `.lang-content` blocks used in `index.html` | NO `.lang-content` blocks anywhere. Content is injected by JS — `index.html` has only empty container divs |
-| Mermaid rendered as raw code (not SVG diagram) | Check: (1) CDN `<script>` loaded BEFORE `scripts/main.js`, (2) `mermaid.initialize()` called before `mermaid.run()`, (3) `mermaid.run()` called AFTER `innerHTML` injection, (4) Mermaid DSL node labels with non-ASCII characters are wrapped in quotes: `A["中文"]` |
-| Mermaid diagram text not translated after language switch | Each `i18n/content-{lang}.js` must contain its own `<pre class="mermaid">` with translated node labels. `switchLanguage()` replaces content + calls `mermaid.run()` to render the new language's diagram |
+| Markdown content not translated into all target languages | Translate full markdown into each language. Generate a separate `index-{lang}.html` per language with the translated content hardcoded. |
+| Content hardcoded in wrong language | Each `index-{lang}.html` must have ALL text (headings, body, TOC, footer, title) in that language. Spot-check each file. |
+| `I18N_CONTENT` or `switchLanguage()` appear in JS | These are REMOVED. Language switching = page navigation (`window.location.href`). Content is hardcoded per file. No runtime injection. |
+| Content not shown on multi-language page | Each `index-{lang}.html` has content hardcoded in `#content-container` and `#toc-container`. Check the correct file is being opened. |
+| Anchor scroll fires before content is ready | Content is in the file at load time. Use `requestAnimationFrame` ×2 to defer anchor scroll until layout is complete. No `await switchLanguage()` needed. |
+| Heading `id` attributes differ between language files | Generate default language FIRST, extract anchor ID map, then generate other HTML files reusing the same IDs by positional mapping. |
+| Anchor IDs semantically similar but not byte-for-byte identical (e.g., `system-settings` vs `system-config`) | Must be byte-for-byte identical across all `index-{lang}.html` files. Generate default first, record exact anchor IDs, reuse in others. |
+| Logos use wrong media path or `data-src-{lang}` | Each `index-{lang}.html` uses `media/{{LANG}}/` paths for logos — hardcoded. No `data-src-{lang}` attributes. |
+| Images in content use wrong paths | Each language's HTML file uses `media/{{LANG}}/` paths — hardcoded per file. |
+| Single-language page has empty containers | Single-language pages place content directly in `index.html`. No multi-file generation needed. |
 | Mermaid DSL parse error with special characters | Wrap ALL node labels in double quotes: `A["标签：设置"]`. Unquoted labels containing `:`, `(`, `)`, `[`, `]`, or non-ASCII text cause Mermaid parser failures |
-| Header title doesn't change on language switch | Header title `<span>` must have `data-i18n="header-title"`. Every `i18n/{lang}.js` must include `'header-title'` translation |
-| `header-title` key missing from i18n files | Add `'header-title': '...'` to every `i18n/{lang}.js` file. The value is the translated page title (e.g., `用户使用手册`, `User Manual`, `Руководство пользователя`) |
+| Header title wrong in language file | Each `index-{lang}.html` has its header title hardcoded (e.g., `<span>用户使用手册</span>` for zh-CN, `<span>User Manual</span>` for en-US) |
+| Browser `<title>` wrong in language file | Each `index-{lang}.html` has `<title>` hardcoded (e.g., `<title>用户使用手册</title>` for zh-CN, `<title>User Manual</title>` for en-US). No JS title switching. |
 | TOC items show bullet points (小圆点) | Add CSS: `.toc-list { list-style: none; padding-left: 0; }` and `.toc-list li { list-style: none; }`. Also `.toc-list ul { list-style: none; }` for nested sub-items |
-| I18N inline object instead of external i18n files | Multi-language pages MUST use external i18n files (`i18n/{lang}.js`), not an inline `I18N` object. Each language gets its own file |
-| i18n directory missing for multi-language page | Create `i18n/` directory with one `.js` file per language in `LANGS`. Skip `i18n/` for single-language pages |
-| i18n files loaded in wrong order | `index.html` loads `scripts/main.js` first (initializes `I18N = {}`), then all `i18n/*.js` files (populate I18N). The `DOMContentLoaded` handler in `scripts/main.js` runs after all files are loaded. Do NOT use an inline `<script>` block in `index.html` |
-| `I18N` global not initialized before i18n files | `scripts/main.js` must contain `const I18N = {};` before any `i18n/xx.js` files are loaded |
+| `index-{lang}.html` files not generated for all languages | Generate one `index-{lang}.html` per language in `LANGS`. Each is a complete standalone page. No `i18n/` directory exists. |
+| JS references `I18N` global or loads external i18n files | Remove ALL `I18N`/`I18N_CONTENT` globals and i18n file loads. Text is hardcoded in each HTML file. `scripts/main.js` is shared — it only contains UI logic (sidebar, back-to-top, TOC, lang switcher navigation). |
 | CSS inlined in `<style>` instead of external file | CSS should be in `style/main.css` (or multiple files in `style/`), referenced via `<link rel="stylesheet">` in `index.html` |
 | JS inlined in `<script>` instead of external file | JS should be in `scripts/main.js`, referenced via `<script src="scripts/main.js">` in `index.html` |
-| Sidebar toggle has `data-i18n` or translatable text | The toggle is a pure icon (☰) — no `data-i18n`, no text content, no fold/expand labels in i18n files |
-| Back-to-top button has text instead of icon | The back-to-top button is a pure icon (↑ or ▲) — no visible text, no `data-i18n`, no `back-to-top` key in i18n files |
-| `back-to-top` key exists in i18n files | Remove `back-to-top` from all i18n files — the button is a pure icon with no translatable text |
-| Sidebar TOC items hardcoded in `index.html` (multi-lang) | Multi-language pages inject TOC via `I18N_CONTENT[lang].toc` into `#toc-container`. `index.html` TOC container must start empty |
-| Sidebar TOC text doesn't change on language switch | Ensure `switchLanguage()` injects `I18N_CONTENT[lang].toc` into `#toc-container` AND calls `initTocLinks()` to re-bind click handlers |
+| Sidebar toggle has text label | The toggle is a pure icon (☰) — no visible text, same across all language files |
+| Back-to-top button has text instead of icon | The back-to-top button is a pure icon (↑ or ▲) — no visible text, same across all language files |
+| Sidebar TOC text wrong in language file | Each `index-{lang}.html` has TOC hardcoded in `#toc-container` in its language. Anchor IDs identical across files, link text translated. |
 | Missing `initBackToTop()` function | Define `initBackToTop()` in `scripts/main.js` — it handles scroll-based visibility and click-to-scroll behavior for the icon button |
 | Missing `initTocLinks()` function | Define `initTocLinks()` in `scripts/main.js` — it intercepts sidebar TOC link clicks for smooth scroll with header offset |
+| Missing `initLangSwitcher()` function | Define `initLangSwitcher()` in `scripts/main.js` — sets current `<select>` value and handles `onchange` navigation to `index-{lang}.html` |

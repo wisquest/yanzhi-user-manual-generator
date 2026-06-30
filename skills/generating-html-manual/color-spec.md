@@ -98,6 +98,10 @@
 
 | CSS 规则 | 属性 | 色值/变量 |
 |----------|------|-----------|
+| `.content h1` | `font-size` | `1.2rem` |
+| `.content h1` | `font-weight` | `700` |
+| `.content h1` | `color` | `var(--neutral-900)` |
+| `.content h1` | `margin` | `0 0 16px` |
 | `.content h2` | `border-bottom` | `3px solid var(--primary-700)` |
 | `.content h3` | `border-left` | `4px solid var(--primary-700)` |
 | `.content h3` | `color` | `var(--neutral-700)` |
